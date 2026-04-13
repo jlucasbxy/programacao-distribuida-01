@@ -1,0 +1,142 @@
+direction: right
+
+title: Web Crawler - Component Diagram {
+  near: top-center
+  shape: text
+  style.font-size: 22
+  style.bold: true
+}
+
+data_server: Data Server {
+  shape: rectangle
+  style.fill: "#dbeafe"
+  style.stroke: "#2563eb"
+  style.stroke-width: 2
+
+  datasource: Dataset Loader {
+    shape: rectangle
+    style.fill: "#eff6ff"
+    label: "Dataset Loader\nreads pages.csv"
+  }
+
+  repository: Link Repository {
+    shape: rectangle
+    style.fill: "#eff6ff"
+    label: "Link Repository\nin-memory page/link lookup"
+  }
+
+  api: Link Service Endpoint {
+    shape: rectangle
+    style.fill: "#eff6ff"
+    label: "Link Service Endpoint\nserves worker requests"
+  }
+
+  datasource -> repository: loads data
+  repository -> api: answers lookups
+}
+
+coordinator: Coordinator {
+  shape: rectangle
+  style.fill: "#dcfce7"
+  style.stroke: "#16a34a"
+  style.stroke-width: 2
+
+  seed_input: Seed Input {
+    shape: page
+    style.fill: "#f0fdf4"
+    label: "Seed Input\ninitial URLs"
+  }
+
+  frontier: Crawl Frontier {
+    shape: queue
+    style.fill: "#f0fdf4"
+    label: "Crawl Frontier\npending URLs"
+  }
+
+  visited: Visited Registry {
+    shape: rectangle
+    style.fill: "#f0fdf4"
+    label: "Visited Registry\ndeduplication"
+  }
+
+  dispatcher: Task Dispatcher {
+    shape: rectangle
+    style.fill: "#bbf7d0"
+    label: "Task Dispatcher\nassigns work to idle workers"
+  }
+
+  worker_gateway: Worker Gateway {
+    shape: rectangle
+    style.fill: "#bbf7d0"
+    label: "Worker Gateway\nreceives registrations, results, and idle signals"
+  }
+
+  shutdown: Completion Monitor {
+    shape: rectangle
+    style.fill: "#f0fdf4"
+    label: "Completion Monitor\ndetects global termination"
+  }
+
+  seed_input -> frontier: enqueue seeds
+  frontier -> dispatcher: provides next URL
+  dispatcher -> visited: checks before dispatch
+  worker_gateway -> frontier: enqueues discovered URLs
+  worker_gateway -> shutdown: reports worker state
+  frontier -> shutdown: queue state
+}
+
+workers: Worker Pool {
+  shape: rectangle
+  style.fill: "#fef9c3"
+  style.stroke: "#ca8a04"
+  style.stroke-width: 2
+
+  intake: Task Intake {
+    shape: rectangle
+    style.fill: "#fefce8"
+    label: "Task Intake\nreceives coordinator assignments"
+  }
+
+  fetcher: Link Fetcher {
+    shape: rectangle
+    style.fill: "#fefce8"
+    label: "Link Fetcher\nrequests links from Data Server"
+  }
+
+  processor: Link Processor {
+    shape: rectangle
+    style.fill: "#fefce8"
+    label: "Link Processor\nvalidate, filter, categorize"
+  }
+
+  reporter: Result Reporter {
+    shape: rectangle
+    style.fill: "#fefce8"
+    label: "Result Reporter\nsends FOUND and IDLE messages"
+  }
+
+  intake -> fetcher: task URL
+  fetcher -> processor: raw links
+  processor -> reporter: processed links
+}
+
+coordinator.dispatcher -> workers.intake: dispatch URL task {
+  style.stroke: "#16a34a"
+}
+
+workers.fetcher -> data_server.api: request links {
+  style.stroke: "#2563eb"
+}
+
+workers.reporter -> coordinator.worker_gateway: report results and status {
+  style.stroke: "#ca8a04"
+}
+
+legend: Diagram Scope {
+  shape: rectangle
+  style.fill: "#f8fafc"
+  style.stroke: "#94a3b8"
+  label: "Shows software responsibilities and interactions.\nOmits host/network topology details beyond component dependencies."
+}
+
+legend -> coordinator
