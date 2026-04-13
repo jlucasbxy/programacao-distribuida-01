@@ -3,92 +3,129 @@ direction: right
 title: Web Crawler — Distributed Architecture {
   near: top-center
   shape: text
-  style.font-size: 20
+  style.font-size: 22
   style.bold: true
 }
+
+# ─── Data Server ──────────────────────────────────────────────────────────────
 
 data_server: Data Server {
   shape: rectangle
   style.fill: "#dbeafe"
   style.stroke: "#2563eb"
+  style.stroke-width: 2
 
-  url_map: Map\<String, List\<String\>\> {
-    shape: rectangle
-    style.fill: "#eff6ff"
-  }
-  executor: ExecutorService\n(thread per connection) {
-    shape: rectangle
-    style.fill: "#eff6ff"
-  }
-  socket: ServerSocket\n(porta fixa) {
-    shape: rectangle
-    style.fill: "#eff6ff"
+  datasource: pages.csv {
+    shape: cylinder
+    style.fill: "#bfdbfe"
+    label: "pages.csv\nID;TEXT;LINKS"
   }
 
-  url_map -> executor: serve links
-  socket -> executor: dispatch
+  url_map: "Map<String, List<String>>" {
+    shape: rectangle
+    style.fill: "#eff6ff"
+    label: "Map<String, List<String>>\n(loaded at startup)"
+  }
+
+  server_socket: ServerSocket {
+    shape: rectangle
+    style.fill: "#eff6ff"
+    label: "ServerSocket\n(fixed port)"
+  }
+
+  executor: ExecutorService {
+    shape: rectangle
+    style.fill: "#eff6ff"
+    label: "ExecutorService\n(1 thread / connection)"
+  }
+
+  datasource -> url_map: load into memory
+  server_socket -> executor: accept & dispatch
+  url_map -> executor: lookup links
 }
+
+# ─── Coordinator ──────────────────────────────────────────────────────────────
 
 coordinator: Coordinator (Master) {
   shape: rectangle
   style.fill: "#dcfce7"
   style.stroke: "#16a34a"
+  style.stroke-width: 2
 
-  seed_queue: BlockingQueue\<String\>\n(seed URLs) {
+  seeds: "Seed URLs (initial list)" {
+    shape: page
+    style.fill: "#f0fdf4"
+  }
+
+  queue: "BlockingQueue<String>" {
     shape: queue
     style.fill: "#f0fdf4"
-  }
-  visited: ConcurrentHashMap\n(visited URLs) {
-    shape: rectangle
-    style.fill: "#f0fdf4"
-  }
-  server_socket: ServerSocket\n(Worker connections) {
-    shape: rectangle
-    style.fill: "#f0fdf4"
-  }
-  dispatcher: Dispatcher Thread\n(assigns URLs to Workers) {
-    shape: rectangle
-    style.fill: "#f0fdf4"
+    label: "BlockingQueue<String>\n(URLs pending crawl)"
   }
 
-  seed_queue -> dispatcher: poll URL
+  visited: ConcurrentHashMap {
+    shape: rectangle
+    style.fill: "#f0fdf4"
+    label: "ConcurrentHashMap\n(visited URL set)"
+  }
+
+  server_socket: ServerSocket {
+    shape: rectangle
+    style.fill: "#f0fdf4"
+    label: "ServerSocket\n(Worker connections)"
+  }
+
+  dispatcher: Dispatcher Thread {
+    shape: rectangle
+    style.fill: "#bbf7d0"
+    label: "Dispatcher Thread\n(assigns URLs to idle Workers)"
+  }
+
+  seeds -> queue: enqueue seeds
+  queue -> dispatcher: poll next URL
   dispatcher -> visited: check & mark visited
-  server_socket -> dispatcher: Worker ready signal
+  server_socket -> dispatcher: "IDLE / FOUND signals"
+  server_socket -> queue: "enqueue new URLs\n(dedup via visited map)"
 }
+
+# ─── Workers ──────────────────────────────────────────────────────────────────
 
 workers: Workers {
   shape: rectangle
   style.fill: "#fef9c3"
   style.stroke: "#ca8a04"
+  style.stroke-width: 2
 
   worker1: Worker 1 {
     shape: rectangle
     style.fill: "#fefce8"
 
-    pool1: ExecutorService\n(thread pool) {
+    coord_sock1: "Socket (Coordinator)" {
+      shape: rectangle
+      style.fill: "#fde68a"
+      label: "Socket\n(Coordinator)"
+    }
+    data_sock1: "Socket (Data Server)" {
+      shape: rectangle
+      style.fill: "#fde68a"
+      label: "Socket\n(Data Server)"
+    }
+    pool1: ExecutorService {
       shape: rectangle
       style.fill: "#fffbeb"
+      label: "ExecutorService\n(thread pool)"
     }
-    proc1: Processing\n- validate integrity\n- filter self-refs\n- categorize (Predicate) {
+    proc1: Processing Pipeline {
       shape: rectangle
       style.fill: "#fffbeb"
+      label: "Processing Pipeline\n1. integrity validation\n2. filter self-references\n3. categorize (Predicate<String>)"
     }
-    pool1 -> proc1
-  }
 
-  worker2: Worker 2 {
-    shape: rectangle
-    style.fill: "#fefce8"
-
-    pool2: ExecutorService\n(thread pool) {
-      shape: rectangle
-      style.fill: "#fffbeb"
-    }
-    proc2: Processing\n- validate integrity\n- filter self-refs\n- categorize (Predicate) {
-      shape: rectangle
-      style.fill: "#fffbeb"
-    }
-    pool2 -> proc2
+    coord_sock1 -> pool1: "receive URL task"
+    pool1 -> data_sock1: "GET /url HTTP/1.1"
+    data_sock1 -> pool1: "LINKS: ..."
+    pool1 -> proc1: raw links
+    proc1 -> coord_sock1: "FOUND / IDLE"
   }
 
   workerN: Worker N {
@@ -96,48 +133,82 @@ workers: Workers {
     style.fill: "#fefce8"
     style.stroke-dash: 4
 
-    poolN: ExecutorService\n(thread pool) {
+    coord_sockN: "Socket (Coordinator)" {
+      shape: rectangle
+      style.fill: "#fde68a"
+      label: "Socket\n(Coordinator)"
+    }
+    data_sockN: "Socket (Data Server)" {
+      shape: rectangle
+      style.fill: "#fde68a"
+      label: "Socket\n(Data Server)"
+    }
+    poolN: ExecutorService {
       shape: rectangle
       style.fill: "#fffbeb"
+      label: "ExecutorService\n(thread pool)"
     }
-    procN: Processing {
+    procN: Processing Pipeline {
       shape: rectangle
       style.fill: "#fffbeb"
+      label: "Processing Pipeline\n1. integrity validation\n2. filter self-references\n3. categorize (Predicate<String>)"
     }
-    poolN -> procN
+
+    coord_sockN -> poolN: "receive URL task"
+    poolN -> data_sockN: "GET /url HTTP/1.1"
+    data_sockN -> poolN: "LINKS: ..."
+    poolN -> procN: raw links
+    procN -> coord_sockN: "FOUND / IDLE"
   }
 }
 
-# Coordinator -> Workers: send URL task
-coordinator.dispatcher -> workers.worker1: "URL task\n(Socket)"
-coordinator.dispatcher -> workers.worker2: "URL task\n(Socket)"
-coordinator.dispatcher -> workers.workerN: "URL task\n(Socket)"
+# ─── Cross-component flows ─────────────────────────────────────────────────────
 
-# Workers -> Data Server: fetch links
-workers.worker1.pool1 -> data_server.socket: "GET /url HTTP/1.1\n(Socket)"
-workers.worker2.pool2 -> data_server.socket: "GET /url HTTP/1.1\n(Socket)"
-workers.workerN.poolN -> data_server.socket: "GET /url HTTP/1.1\n(Socket)"
+# 1. Workers register with Coordinator on startup
+workers.worker1.coord_sock1 -> coordinator.server_socket: "REGISTER (thread capacity)" {
+  style.stroke: "#6b7280"
+  style.stroke-dash: 4
+}
+workers.workerN.coord_sockN -> coordinator.server_socket: "REGISTER (thread capacity)" {
+  style.stroke: "#6b7280"
+  style.stroke-dash: 4
+}
 
-# Data Server -> Workers: return links
-data_server.executor -> workers.worker1.pool1: "LINKS: url1, url2, ..."
-data_server.executor -> workers.worker2.pool2: "LINKS: url1, url2, ..."
-data_server.executor -> workers.workerN.poolN: "LINKS: url1, url2, ..."
+# 2. Coordinator dispatches URL tasks to Workers
+coordinator.dispatcher -> workers.worker1.coord_sock1: "URL task (Socket)" {
+  style.stroke: "#16a34a"
+}
+coordinator.dispatcher -> workers.workerN.coord_sockN: "URL task (Socket)" {
+  style.stroke: "#16a34a"
+}
 
-# Workers -> Coordinator: report found links
-workers.worker1.proc1 -> coordinator.server_socket: "FOUND: url1, url2 FROM src\n(Socket)"
-workers.worker2.proc2 -> coordinator.server_socket: "FOUND: url1, url2 FROM src\n(Socket)"
-workers.workerN.procN -> coordinator.server_socket: "FOUND: url1, url2 FROM src\n(Socket)"
+# 3. Workers fetch links from Data Server
+workers.worker1.data_sock1 -> data_server.server_socket: "GET /url HTTP/1.1" {
+  style.stroke: "#2563eb"
+}
+workers.workerN.data_sockN -> data_server.server_socket: "GET /url HTTP/1.1" {
+  style.stroke: "#2563eb"
+}
 
-# Coordinator internal feedback loop
-coordinator.server_socket -> coordinator.seed_queue: "enqueue new URLs\n(dedup via visited map)"
+# 4. Workers report results back to Coordinator
+workers.worker1.coord_sock1 -> coordinator.server_socket: "FOUND: url1, url2 FROM src" {
+  style.stroke: "#ca8a04"
+}
+workers.workerN.coord_sockN -> coordinator.server_socket: "FOUND: url1, url2 FROM src" {
+  style.stroke: "#ca8a04"
+}
 
-# Shutdown condition note
+# ─── Shutdown condition ────────────────────────────────────────────────────────
+
 shutdown: Shutdown Condition {
   shape: rectangle
   style.fill: "#fce7f3"
   style.stroke: "#db2777"
-  style.font-size: 13
-  label: "Coordinator shuts down when:\n1. BlockingQueue is empty\n2. All Workers report IDLE\n3. No messages in transit"
+  style.stroke-width: 2
+  label: "Coordinator terminates when ALL hold:\n• BlockingQueue is empty\n• All Workers report IDLE\n• No FOUND messages in transit"
 }
 
-coordinator -> shutdown: monitors
+coordinator -> shutdown: monitors {
+  style.stroke: "#db2777"
+  style.stroke-dash: 4
+}
