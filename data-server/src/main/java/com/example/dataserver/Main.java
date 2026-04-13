@@ -7,7 +7,6 @@ import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -24,7 +23,7 @@ public class Main {
         int port = resolvePort(args);
         String dataFilePath = args.length > 1 ? args[1] : null;
 
-        Map<String, List<String>> internetMock;
+        Map<String, InternetMockJsonLoader.InternetPageData> internetMock;
         try {
             internetMock = InternetMockJsonLoader.load(dataFilePath);
         } catch (IOException e) {
@@ -90,7 +89,7 @@ public class Main {
         }
     }
 
-    private static void handleWorkerRequest(Socket workerSocket, Map<String, List<String>> internetMock) {
+    private static void handleWorkerRequest(Socket workerSocket, Map<String, InternetMockJsonLoader.InternetPageData> internetMock) {
         try (Socket socket = workerSocket;
              BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
              PrintWriter writer = new PrintWriter(socket.getOutputStream(), true, StandardCharsets.UTF_8)) {
@@ -100,22 +99,37 @@ public class Main {
                 return;
             }
 
-            Matcher matcher = GET_PATTERN.matcher(requestLine.trim());
-            if (!matcher.find()) {
+            String url = resolveRequestedUrl(requestLine);
+            if (url == null) {
                 writer.println("ERROR: INVALID_REQUEST");
                 return;
             }
 
-            String url = matcher.group(1);
-            List<String> links = internetMock.get(url);
-            if (links == null) {
+            InternetMockJsonLoader.InternetPageData page = internetMock.get(url);
+            if (page == null) {
                 writer.println("ERROR: URL_NOT_FOUND");
                 return;
             }
 
-            writer.println("LINKS: " + String.join(", ", links));
+            writer.println("NAME: " + page.name());
+            writer.println("LINKS: " + String.join(", ", page.links()));
+            writer.println("CONTENT: " + page.content().replace("\r", " ").replace("\n", " "));
         } catch (IOException e) {
             System.err.println("Worker request failed: " + e.getMessage());
         }
+    }
+
+    private static String resolveRequestedUrl(String requestLine) {
+        String trimmedRequest = requestLine.trim();
+        Matcher matcher = GET_PATTERN.matcher(trimmedRequest);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+
+        if (trimmedRequest.isBlank()) {
+            return null;
+        }
+
+        return trimmedRequest.startsWith("/") ? trimmedRequest.substring(1) : trimmedRequest;
     }
 }

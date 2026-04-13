@@ -15,7 +15,7 @@ final class InternetMockJsonLoader {
     private InternetMockJsonLoader() {
     }
 
-    static Map<String, List<String>> load(String dataFilePath) throws IOException {
+    static Map<String, InternetPageData> load(String dataFilePath) throws IOException {
         if (dataFilePath == null || dataFilePath.isBlank()) {
             throw new IOException("Missing internet mock json path. Pass it as the second argument.");
         }
@@ -23,24 +23,25 @@ final class InternetMockJsonLoader {
         List<InternetPage> loadedPages = OBJECT_MAPPER.readValue(Path.of(dataFilePath).toFile(), new TypeReference<List<InternetPage>>() {
         });
 
-        Map<String, List<String>> internetMock = new HashMap<>();
+        Map<String, InternetPageData> internetMock = new HashMap<>();
         for (InternetPage pageData : loadedPages) {
             if (pageData == null || pageData.url() == null || pageData.url().isBlank()) {
                 continue;
             }
 
-            List<String> links = pageData.links();
-            if (links == null) {
-                internetMock.put(pageData.url(), List.of());
-                continue;
-            }
+            List<String> links = pageData.links() == null ? List.of() : List.copyOf(pageData.links());
+            String name = pageData.name() == null || pageData.name().isBlank() ? pageData.url() : pageData.name();
+            String content = pageData.content() == null ? "" : pageData.content();
 
-            internetMock.put(pageData.url(), List.copyOf(links));
+            internetMock.put(pageData.url(), new InternetPageData(name, content, links));
         }
 
         return Map.copyOf(internetMock);
     }
 
-    private record InternetPage(String url, List<String> links) {
+    record InternetPageData(String name, String content, List<String> links) {
+    }
+
+    private record InternetPage(String url, String name, String content, List<String> links) {
     }
 }
