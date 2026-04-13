@@ -1,0 +1,143 @@
+direction: right
+
+title: Web Crawler — Distributed Architecture {
+  near: top-center
+  shape: text
+  style.font-size: 20
+  style.bold: true
+}
+
+data_server: Data Server {
+  shape: rectangle
+  style.fill: "#dbeafe"
+  style.stroke: "#2563eb"
+
+  url_map: Map\<String, List\<String\>\> {
+    shape: rectangle
+    style.fill: "#eff6ff"
+  }
+  executor: ExecutorService\n(thread per connection) {
+    shape: rectangle
+    style.fill: "#eff6ff"
+  }
+  socket: ServerSocket\n(porta fixa) {
+    shape: rectangle
+    style.fill: "#eff6ff"
+  }
+
+  url_map -> executor: serve links
+  socket -> executor: dispatch
+}
+
+coordinator: Coordinator (Master) {
+  shape: rectangle
+  style.fill: "#dcfce7"
+  style.stroke: "#16a34a"
+
+  seed_queue: BlockingQueue\<String\>\n(seed URLs) {
+    shape: queue
+    style.fill: "#f0fdf4"
+  }
+  visited: ConcurrentHashMap\n(visited URLs) {
+    shape: rectangle
+    style.fill: "#f0fdf4"
+  }
+  server_socket: ServerSocket\n(Worker connections) {
+    shape: rectangle
+    style.fill: "#f0fdf4"
+  }
+  dispatcher: Dispatcher Thread\n(assigns URLs to Workers) {
+    shape: rectangle
+    style.fill: "#f0fdf4"
+  }
+
+  seed_queue -> dispatcher: poll URL
+  dispatcher -> visited: check & mark visited
+  server_socket -> dispatcher: Worker ready signal
+}
+
+workers: Workers {
+  shape: rectangle
+  style.fill: "#fef9c3"
+  style.stroke: "#ca8a04"
+
+  worker1: Worker 1 {
+    shape: rectangle
+    style.fill: "#fefce8"
+
+    pool1: ExecutorService\n(thread pool) {
+      shape: rectangle
+      style.fill: "#fffbeb"
+    }
+    proc1: Processing\n- validate integrity\n- filter self-refs\n- categorize (Predicate) {
+      shape: rectangle
+      style.fill: "#fffbeb"
+    }
+    pool1 -> proc1
+  }
+
+  worker2: Worker 2 {
+    shape: rectangle
+    style.fill: "#fefce8"
+
+    pool2: ExecutorService\n(thread pool) {
+      shape: rectangle
+      style.fill: "#fffbeb"
+    }
+    proc2: Processing\n- validate integrity\n- filter self-refs\n- categorize (Predicate) {
+      shape: rectangle
+      style.fill: "#fffbeb"
+    }
+    pool2 -> proc2
+  }
+
+  workerN: Worker N {
+    shape: rectangle
+    style.fill: "#fefce8"
+    style.stroke-dash: 4
+
+    poolN: ExecutorService\n(thread pool) {
+      shape: rectangle
+      style.fill: "#fffbeb"
+    }
+    procN: Processing {
+      shape: rectangle
+      style.fill: "#fffbeb"
+    }
+    poolN -> procN
+  }
+}
+
+# Coordinator -> Workers: send URL task
+coordinator.dispatcher -> workers.worker1: "URL task\n(Socket)"
+coordinator.dispatcher -> workers.worker2: "URL task\n(Socket)"
+coordinator.dispatcher -> workers.workerN: "URL task\n(Socket)"
+
+# Workers -> Data Server: fetch links
+workers.worker1.pool1 -> data_server.socket: "GET /url HTTP/1.1\n(Socket)"
+workers.worker2.pool2 -> data_server.socket: "GET /url HTTP/1.1\n(Socket)"
+workers.workerN.poolN -> data_server.socket: "GET /url HTTP/1.1\n(Socket)"
+
+# Data Server -> Workers: return links
+data_server.executor -> workers.worker1.pool1: "LINKS: url1, url2, ..."
+data_server.executor -> workers.worker2.pool2: "LINKS: url1, url2, ..."
+data_server.executor -> workers.workerN.poolN: "LINKS: url1, url2, ..."
+
+# Workers -> Coordinator: report found links
+workers.worker1.proc1 -> coordinator.server_socket: "FOUND: url1, url2 FROM src\n(Socket)"
+workers.worker2.proc2 -> coordinator.server_socket: "FOUND: url1, url2 FROM src\n(Socket)"
+workers.workerN.procN -> coordinator.server_socket: "FOUND: url1, url2 FROM src\n(Socket)"
+
+# Coordinator internal feedback loop
+coordinator.server_socket -> coordinator.seed_queue: "enqueue new URLs\n(dedup via visited map)"
+
+# Shutdown condition note
+shutdown: Shutdown Condition {
+  shape: rectangle
+  style.fill: "#fce7f3"
+  style.stroke: "#db2777"
+  style.font-size: 13
+  label: "Coordinator shuts down when:\n1. BlockingQueue is empty\n2. All Workers report IDLE\n3. No messages in transit"
+}
+
+coordinator -> shutdown: monitors
