@@ -9,6 +9,11 @@ target/
 *.iml
 .vscode/
 
+# Eclipse/STS
+.project
+.classpath
+.settings/
+
 *.DS_Store
 
 docs/*.svg
