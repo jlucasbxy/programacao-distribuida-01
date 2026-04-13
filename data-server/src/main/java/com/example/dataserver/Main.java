@@ -99,35 +99,37 @@ public class Main {
     }
 
     private static Map<String, List<String>> loadInternetMock(String dataFilePath) throws IOException {
-        Map<String, List<String>> loadedMock;
+        List<InternetPage> loadedPages;
 
         if (dataFilePath != null && !dataFilePath.isBlank()) {
-            loadedMock = OBJECT_MAPPER.readValue(Path.of(dataFilePath).toFile(), new TypeReference<Map<String, List<String>>>() {
+            loadedPages = OBJECT_MAPPER.readValue(Path.of(dataFilePath).toFile(), new TypeReference<List<InternetPage>>() {
             });
         } else {
             InputStream input = Main.class.getResourceAsStream(DEFAULT_RESOURCE);
             if (input == null) {
                 throw new IOException("Resource not found: " + DEFAULT_RESOURCE);
             }
-            loadedMock = OBJECT_MAPPER.readValue(input, new TypeReference<Map<String, List<String>>>() {
+            loadedPages = OBJECT_MAPPER.readValue(input, new TypeReference<List<InternetPage>>() {
             });
         }
 
         Map<String, List<String>> internetMock = new HashMap<>();
-        for (Map.Entry<String, List<String>> entry : loadedMock.entrySet()) {
-            String page = entry.getKey();
-            List<String> links = entry.getValue();
-            if (page == null || page.isBlank()) {
+        for (InternetPage pageData : loadedPages) {
+            if (pageData == null || pageData.url() == null || pageData.url().isBlank()) {
                 continue;
             }
+            List<String> links = pageData.links();
             if (links == null) {
-                internetMock.put(page, List.of());
+                internetMock.put(pageData.url(), List.of());
                 continue;
             }
-            internetMock.put(page, List.copyOf(links));
+            internetMock.put(pageData.url(), List.copyOf(links));
         }
 
         return Map.copyOf(internetMock);
+    }
+
+    private record InternetPage(String url, List<String> links) {
     }
 
     private static void handleWorkerRequest(Socket workerSocket, Map<String, List<String>> internetMock) {
