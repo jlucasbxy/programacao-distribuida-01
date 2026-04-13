@@ -8,10 +8,7 @@ import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,9 +19,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 public class Main {
     private static final int DEFAULT_PORT = 9090;
-    private static final String DEFAULT_RESOURCE = "/internet-mock.csv";
+    private static final String DEFAULT_RESOURCE = "/internet-mock.json";
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Pattern GET_PATTERN = Pattern.compile("^GET\\s+/?([^\\s]+)");
 
     public static void main(String[] args) {
@@ -98,47 +99,32 @@ public class Main {
     }
 
     private static Map<String, List<String>> loadInternetMock(String dataFilePath) throws IOException {
-        Map<String, List<String>> internetMock = new HashMap<>();
-        List<String> lines;
+        Map<String, List<String>> loadedMock;
 
         if (dataFilePath != null && !dataFilePath.isBlank()) {
-            lines = Files.readAllLines(Path.of(dataFilePath), StandardCharsets.UTF_8);
+            loadedMock = OBJECT_MAPPER.readValue(Path.of(dataFilePath).toFile(), new TypeReference<Map<String, List<String>>>() {
+            });
         } else {
             InputStream input = Main.class.getResourceAsStream(DEFAULT_RESOURCE);
             if (input == null) {
                 throw new IOException("Resource not found: " + DEFAULT_RESOURCE);
             }
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {
-                lines = reader.lines().toList();
-            }
+            loadedMock = OBJECT_MAPPER.readValue(input, new TypeReference<Map<String, List<String>>>() {
+            });
         }
 
-        for (String rawLine : lines) {
-            String line = rawLine.trim();
-            if (line.isEmpty() || line.startsWith("#")) {
+        Map<String, List<String>> internetMock = new HashMap<>();
+        for (Map.Entry<String, List<String>> entry : loadedMock.entrySet()) {
+            String page = entry.getKey();
+            List<String> links = entry.getValue();
+            if (page == null || page.isBlank()) {
                 continue;
             }
-
-            String[] parts = line.split(";", -1);
-            if (parts.length < 3) {
+            if (links == null) {
+                internetMock.put(page, List.of());
                 continue;
             }
-
-            String pageId = parts[0].trim();
-            if (pageId.isEmpty()) {
-                continue;
-            }
-
-            List<String> links = new ArrayList<>();
-            String linksRaw = parts[2].trim();
-            if (!linksRaw.isEmpty()) {
-                Arrays.stream(linksRaw.split(","))
-                    .map(String::trim)
-                    .filter(link -> !link.isEmpty())
-                    .forEach(links::add);
-            }
-
-            internetMock.put(pageId, List.copyOf(links));
+            internetMock.put(page, List.copyOf(links));
         }
 
         return Map.copyOf(internetMock);

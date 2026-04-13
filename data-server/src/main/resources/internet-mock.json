@@ -1,0 +1,21 @@
+{
+  "google.com": ["gmail.com", "youtube.com", "noticias.com", "maps.com"],
+  "gmail.com": ["google.com", "drive.com", "suporte.com"],
+  "youtube.com": ["google.com", "music.com", "noticias.com"],
+  "noticias.com": ["esporte.com", "clima.com", "google.com", "economia.com"],
+  "esporte.com": ["futebol.com", "basquete.com", "noticias.com"],
+  "futebol.com": ["times.com", "estatisticas.com"],
+  "basquete.com": ["nba.com", "estatisticas.com"],
+  "clima.com": ["noticias.com", "mapas-climaticos.com"],
+  "economia.com": ["bolsa.com", "google.com"],
+  "maps.com": ["google.com", "clima.com"],
+  "drive.com": ["google.com", "docs.com"],
+  "suporte.com": ["google.com"],
+  "music.com": ["youtube.com"],
+  "times.com": ["futebol.com"],
+  "estatisticas.com": ["esporte.com"],
+  "nba.com": ["basquete.com"],
+  "mapas-climaticos.com": ["clima.com"],
+  "bolsa.com": ["economia.com"],
+  "docs.com": ["drive.com"]
+}
