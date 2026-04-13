@@ -2,14 +2,11 @@ package com.example.dataserver;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -19,13 +16,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 public class Main {
     private static final int DEFAULT_PORT = 9090;
-    private static final String DEFAULT_RESOURCE = "/internet-mock.json";
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Pattern GET_PATTERN = Pattern.compile("^GET\\s+/?([^\\s]+)");
 
     public static void main(String[] args) {
@@ -34,7 +26,7 @@ public class Main {
 
         Map<String, List<String>> internetMock;
         try {
-            internetMock = loadInternetMock(dataFilePath);
+            internetMock = InternetMockJsonLoader.load(dataFilePath);
         } catch (IOException e) {
             System.err.println("Failed to load internet mock data: " + e.getMessage());
             return;
@@ -96,40 +88,6 @@ public class Main {
             System.err.println("Invalid port format. Falling back to " + DEFAULT_PORT + ".");
             return DEFAULT_PORT;
         }
-    }
-
-    private static Map<String, List<String>> loadInternetMock(String dataFilePath) throws IOException {
-        List<InternetPage> loadedPages;
-
-        if (dataFilePath != null && !dataFilePath.isBlank()) {
-            loadedPages = OBJECT_MAPPER.readValue(Path.of(dataFilePath).toFile(), new TypeReference<List<InternetPage>>() {
-            });
-        } else {
-            InputStream input = Main.class.getResourceAsStream(DEFAULT_RESOURCE);
-            if (input == null) {
-                throw new IOException("Resource not found: " + DEFAULT_RESOURCE);
-            }
-            loadedPages = OBJECT_MAPPER.readValue(input, new TypeReference<List<InternetPage>>() {
-            });
-        }
-
-        Map<String, List<String>> internetMock = new HashMap<>();
-        for (InternetPage pageData : loadedPages) {
-            if (pageData == null || pageData.url() == null || pageData.url().isBlank()) {
-                continue;
-            }
-            List<String> links = pageData.links();
-            if (links == null) {
-                internetMock.put(pageData.url(), List.of());
-                continue;
-            }
-            internetMock.put(pageData.url(), List.copyOf(links));
-        }
-
-        return Map.copyOf(internetMock);
-    }
-
-    private record InternetPage(String url, List<String> links) {
     }
 
     private static void handleWorkerRequest(Socket workerSocket, Map<String, List<String>> internetMock) {
