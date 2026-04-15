@@ -8,7 +8,6 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -22,14 +21,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class Coordinator {
-    private static final String REGISTER_PREFIX = "REGISTER";
-    private static final String REQUEST = "REQUEST";
-    private static final String FOUND_PREFIX = "FOUND:";
-    private static final String DONE_PREFIX = "DONE";
-    private static final String IDLE = "IDLE";
-    private static final String QUIT = "QUIT";
-    private static final String HEARTBEAT = "PING";
-
     private final CoordinatorConfig config;
     private final BlockingQueue<String> frontierQueue;
     private final Set<String> visitedUrls;
@@ -137,7 +128,7 @@ public class Coordinator {
 
     private WorkerState registerWorker(String registrationLine, Socket socket) {
         String normalized = registrationLine == null ? "" : registrationLine.trim();
-        if (!normalized.startsWith(REGISTER_PREFIX)) {
+        if (!normalized.startsWith(CoordinatorMessageSupport.REGISTER_PREFIX)) {
             return null;
         }
 
@@ -175,34 +166,34 @@ public class Coordinator {
             return "STOP";
         }
 
-        if (message.equals(REQUEST)) {
+        if (message.equals(CoordinatorMessageSupport.REQUEST)) {
             return handleTaskRequest(worker);
         }
 
-        if (message.startsWith(FOUND_PREFIX)) {
+        if (message.startsWith(CoordinatorMessageSupport.FOUND_PREFIX)) {
             int added = handleFound(worker, message);
             evaluateCompletion();
             return "ACK FOUND " + added;
         }
 
-        if (message.startsWith(DONE_PREFIX)) {
+        if (message.startsWith(CoordinatorMessageSupport.DONE_PREFIX)) {
             completeTask(worker);
             worker.markIdle();
             evaluateCompletion();
             return "ACK DONE";
         }
 
-        if (message.equals(IDLE)) {
+        if (message.equals(CoordinatorMessageSupport.IDLE)) {
             worker.markIdle();
             evaluateCompletion();
             return completionReached.get() ? "STOP" : "ACK IDLE";
         }
 
-        if (message.equals(HEARTBEAT)) {
+        if (message.equals(CoordinatorMessageSupport.HEARTBEAT)) {
             return "PONG";
         }
 
-        if (message.equals(QUIT)) {
+        if (message.equals(CoordinatorMessageSupport.QUIT)) {
             return "BYE";
         }
 
@@ -238,11 +229,7 @@ public class Coordinator {
         completeTask(worker);
         worker.markIdle();
 
-        String payload = message.substring(FOUND_PREFIX.length()).trim();
-        int fromIndex = payload.toUpperCase().lastIndexOf(" FROM ");
-        String linksPart = fromIndex >= 0 ? payload.substring(0, fromIndex).trim() : payload;
-
-        List<String> links = parseLinks(linksPart);
+        List<String> links = CoordinatorMessageSupport.parseFoundLinks(message);
         int added = 0;
         for (String link : links) {
             if (enqueueIfNew(link)) {
@@ -264,7 +251,7 @@ public class Coordinator {
             return false;
         }
 
-        String normalized = normalizeUrl(url);
+        String normalized = CoordinatorMessageSupport.normalizeUrl(url);
         if (normalized.isEmpty()) {
             return false;
         }
@@ -275,30 +262,6 @@ public class Coordinator {
 
         frontierQueue.offer(normalized);
         return true;
-    }
-
-    private static String normalizeUrl(String url) {
-        String normalized = url.trim();
-        if (normalized.startsWith("/")) {
-            normalized = normalized.substring(1);
-        }
-        return normalized;
-    }
-
-    private static List<String> parseLinks(String csvValue) {
-        if (csvValue == null || csvValue.isBlank()) {
-            return List.of();
-        }
-
-        String[] parts = csvValue.split(",");
-        List<String> links = new ArrayList<>(parts.length);
-        for (String part : parts) {
-            String candidate = normalizeUrl(part);
-            if (!candidate.isBlank()) {
-                links.add(candidate);
-            }
-        }
-        return links;
     }
 
     private void evaluateCompletion() {
@@ -328,58 +291,6 @@ public class Coordinator {
                 socket.close();
             } catch (IOException ignored) {
             }
-        }
-    }
-
-    private static final class WorkerState {
-        private final String id;
-        private final int capacity;
-        private volatile boolean idle;
-        private String currentTask;
-
-        private WorkerState(String id, int capacity) {
-            this.id = id;
-            this.capacity = capacity;
-            this.idle = true;
-        }
-
-        private String id() {
-            return id;
-        }
-
-        private int capacity() {
-            return capacity;
-        }
-
-        private synchronized void assignTask(String task) {
-            this.currentTask = task;
-            this.idle = false;
-        }
-
-        private synchronized boolean hasAssignedTask() {
-            return this.currentTask != null;
-        }
-
-        private synchronized String completeTask() {
-            String done = this.currentTask;
-            this.currentTask = null;
-            this.idle = true;
-            return done;
-        }
-
-        private synchronized String releaseTaskWithoutCompleting() {
-            String task = this.currentTask;
-            this.currentTask = null;
-            this.idle = true;
-            return task;
-        }
-
-        private synchronized void markIdle() {
-            this.idle = true;
-        }
-
-        private boolean isIdle() {
-            return idle;
         }
     }
 }
