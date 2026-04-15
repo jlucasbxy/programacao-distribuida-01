@@ -11,6 +11,24 @@
   <artifactId>data-server</artifactId>
   <name>data-server</name>
 
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.6.3</version>
+        <configuration>
+          <mainClass>com.example.dataserver.Main</mainClass>
+          <arguments>
+            <argument>--server</argument>
+            <argument>9090</argument>
+            <argument>${project.basedir}/src/main/resources/internet-mock.json</argument>
+          </arguments>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
   <dependencies>
     <dependency>
       <groupId>com.example</groupId>
