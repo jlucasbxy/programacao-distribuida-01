@@ -23,13 +23,7 @@ public class Main {
         int port = resolvePort(args);
         String dataFilePath = args.length > 1 ? args[1] : null;
 
-        Map<String, InternetMockJsonLoader.InternetPageData> internetMock;
-        try {
-            internetMock = InternetMockJsonLoader.load(dataFilePath);
-        } catch (IOException e) {
-            System.err.println("Failed to load internet mock data: " + e.getMessage());
-            return;
-        }
+        Map<String, InternetMockJsonLoader.InternetPageData> internetMock = InternetMockJsonLoader.load(dataFilePath);
 
         ExecutorService workers = Executors.newFixedThreadPool(Math.max(4, Runtime.getRuntime().availableProcessors()));
         AtomicBoolean running = new AtomicBoolean(true);

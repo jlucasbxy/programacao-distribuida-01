@@ -15,13 +15,20 @@ final class InternetMockJsonLoader {
     private InternetMockJsonLoader() {
     }
 
-    static Map<String, InternetPageData> load(String dataFilePath) throws IOException {
+    static Map<String, InternetPageData> load(String dataFilePath) {
         if (dataFilePath == null || dataFilePath.isBlank()) {
-            throw new IOException("Missing internet mock json path. Pass it as the second argument.");
+            System.err.println("Missing internet mock json path. Pass it as the second argument. Starting with empty data.");
+            return Map.of();
         }
 
-        List<InternetPage> loadedPages = OBJECT_MAPPER.readValue(Path.of(dataFilePath).toFile(), new TypeReference<List<InternetPage>>() {
-        });
+        List<InternetPage> loadedPages;
+        try {
+            loadedPages = OBJECT_MAPPER.readValue(Path.of(dataFilePath).toFile(), new TypeReference<List<InternetPage>>() {
+            });
+        } catch (IOException e) {
+            System.err.println("Failed to load internet mock data: " + e.getMessage() + ". Starting with empty data.");
+            return Map.of();
+        }
 
         Map<String, InternetPageData> internetMock = new HashMap<>();
         for (InternetPage pageData : loadedPages) {
