@@ -12,10 +12,15 @@ public class DataServerClient {
     private static final String DEFAULT_HOST = "localhost";
     private static final int DEFAULT_PORT = 9090;
 
-    public static void main(String[] args) throws IOException {
-        String host = args.length > 0 ? args[0] : DEFAULT_HOST;
-        int port = args.length > 1 ? Integer.parseInt(args[1]) : DEFAULT_PORT;
+    private final String host;
+    private final int port;
 
+    public DataServerClient(String[] args) {
+        this.host = args.length > 0 ? args[0] : DEFAULT_HOST;
+        this.port = args.length > 1 ? Integer.parseInt(args[1]) : DEFAULT_PORT;
+    }
+
+    public void start() throws IOException {
         Scanner scanner = new Scanner(System.in, StandardCharsets.UTF_8);
 
         System.out.println("Data Server Client — connected to " + host + ":" + port);
