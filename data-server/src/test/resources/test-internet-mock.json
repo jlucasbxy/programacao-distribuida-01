@@ -1,0 +1,20 @@
+[
+  {
+    "url": "google.com",
+    "name": "Google",
+    "content": "The search engine",
+    "links": ["gmail.com", "youtube.com"]
+  },
+  {
+    "url": "gmail.com",
+    "name": "Gmail",
+    "content": "Email service",
+    "links": ["google.com"]
+  },
+  {
+    "url": "youtube.com",
+    "name": "YouTube",
+    "content": "Video platform",
+    "links": ["google.com"]
+  }
+]
