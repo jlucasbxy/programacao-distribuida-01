@@ -16,19 +16,17 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Main {
-    private static final int DEFAULT_PORT = 9090;
     private static final Pattern GET_PATTERN = Pattern.compile("^GET\\s+/?([^\\s]+)");
 
     public static void main(String[] args) {
-        int port = resolvePort(args);
-        String dataFilePath = args.length > 1 ? args[1] : null;
+        ServerConfig config = ServerConfig.fromArgs(args);
 
-        Map<String, InternetMockJsonLoader.InternetPageData> internetMock = InternetMockJsonLoader.load(dataFilePath);
+        Map<String, InternetMockJsonLoader.InternetPageData> internetMock = InternetMockJsonLoader.load(config.dataFilePath());
 
-        ExecutorService workers = Executors.newFixedThreadPool(Math.max(4, Runtime.getRuntime().availableProcessors()));
+        ExecutorService workers = Executors.newFixedThreadPool(config.threadPoolSize());
         AtomicBoolean running = new AtomicBoolean(true);
 
-        try (ServerSocket serverSocket = new ServerSocket(port)) {
+        try (ServerSocket serverSocket = new ServerSocket(config.port())) {
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 running.set(false);
                 try {
@@ -38,7 +36,7 @@ public class Main {
                 workers.shutdown();
             }));
 
-            System.out.println("Data server listening on port " + port + " with " + internetMock.size() + " pages loaded.");
+            System.out.println("Data server listening on port " + config.port() + " with " + internetMock.size() + " pages loaded.");
 
             while (running.get()) {
                 try {
@@ -62,24 +60,6 @@ public class Main {
                 workers.shutdownNow();
                 Thread.currentThread().interrupt();
             }
-        }
-    }
-
-    private static int resolvePort(String[] args) {
-        if (args.length == 0) {
-            return DEFAULT_PORT;
-        }
-
-        try {
-            int port = Integer.parseInt(args[0]);
-            if (port < 1 || port > 65535) {
-                System.err.println("Invalid port " + port + ". Falling back to " + DEFAULT_PORT + ".");
-                return DEFAULT_PORT;
-            }
-            return port;
-        } catch (NumberFormatException e) {
-            System.err.println("Invalid port format. Falling back to " + DEFAULT_PORT + ".");
-            return DEFAULT_PORT;
         }
     }
 
