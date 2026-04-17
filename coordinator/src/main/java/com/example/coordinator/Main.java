@@ -6,7 +6,7 @@ import java.util.Arrays;
 public class Main {
     public static void main(String[] args) throws IOException {
         if (args.length == 0) {
-            System.err.println("Usage: Main --coordinator [port] [seed1,seed2,...]");
+            System.err.println("Usage: Main --coordinator [port] [--seeds-file <path>]");
             System.exit(1);
         }
 
