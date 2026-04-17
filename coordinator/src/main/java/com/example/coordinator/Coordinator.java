@@ -8,7 +8,6 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -112,30 +111,12 @@ public class Coordinator {
     }
 
     private WorkerState registerWorker(String registrationLine) {
-        String normalized = registrationLine == null ? "" : registrationLine.trim();
-        if (!normalized.startsWith(CoordinatorMessageSupport.REGISTER_PREFIX)) {
+        CoordinatorMessageSupport.RegisterRequest req = CoordinatorMessageSupport.parseRegister(registrationLine);
+        if (req == null) {
             return null;
         }
 
-        String[] parts = normalized.split("\\s+");
-        String workerId;
-        int capacity = 1;
-
-        if (parts.length >= 2 && !parts[1].isBlank()) {
-            workerId = parts[1];
-        } else {
-            workerId = "worker-" + UUID.randomUUID();
-        }
-
-        if (parts.length >= 3) {
-            try {
-                capacity = Math.max(1, Integer.parseInt(parts[2]));
-            } catch (NumberFormatException ignored) {
-                capacity = 1;
-            }
-        }
-
-        WorkerState worker = new WorkerState(workerId, capacity);
+        WorkerState worker = new WorkerState(req.workerId(), req.capacity());
         workers.put(worker.id(), worker);
         crawlState.markWorkerRegistered();
         return worker;
