@@ -18,10 +18,10 @@ import java.util.regex.Pattern;
 public class DataServer {
     private static final Pattern GET_PATTERN = Pattern.compile("^GET\\s+/?([^\\s]+)");
 
-    private final ServerConfig config;
+    private final DataServerConfig config;
     private final Map<String, InternetMockJsonLoader.InternetPageData> internetMock;
 
-    public DataServer(ServerConfig config) {
+    public DataServer(DataServerConfig config) {
         this.config = config;
         this.internetMock = InternetMockJsonLoader.load(config.dataFilePath());
     }

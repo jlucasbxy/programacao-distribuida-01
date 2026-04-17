@@ -14,7 +14,7 @@ public class Main {
         String[] rest = Arrays.copyOfRange(args, 1, args.length);
 
         switch (mode) {
-            case "--server" -> new DataServer(ServerConfig.fromArgs(rest)).start();
+            case "--server" -> new DataServer(DataServerConfig.fromArgs(rest)).start();
             default -> {
                 System.err.println("Unknown mode: " + mode);
                 System.err.println("Use --server.");
