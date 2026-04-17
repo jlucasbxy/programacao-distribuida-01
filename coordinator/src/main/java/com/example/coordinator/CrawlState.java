@@ -1,5 +1,6 @@
 package com.example.coordinator;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
@@ -34,7 +35,7 @@ public class CrawlState {
     public boolean enqueueIfNew(String url) {
         if (url == null) return false;
 
-        String normalized = MessageType.normalizeUrl(url);
+        String normalized = normalizeUrl(url);
         if (normalized.isEmpty()) return false;
 
         if (!visitedUrls.add(normalized)) return false;
@@ -74,12 +75,32 @@ public class CrawlState {
         completeTask(worker);
         worker.markIdle();
 
-        List<String> links = MessageType.parseFoundLinks(message);
+        List<String> links = parseFoundLinks(message);
         int added = 0;
         for (String link : links) {
             if (enqueueIfNew(link)) added++;
         }
         return added;
+    }
+
+    private static List<String> parseFoundLinks(String foundMessage) {
+        String payload = foundMessage.substring("FOUND:".length()).trim();
+        int fromIndex = payload.toUpperCase().lastIndexOf(" FROM ");
+        String linksPart = fromIndex >= 0 ? payload.substring(0, fromIndex).trim() : payload;
+        if (linksPart.isBlank()) return List.of();
+
+        String[] parts = linksPart.split(",");
+        List<String> links = new ArrayList<>(parts.length);
+        for (String part : parts) {
+            String candidate = normalizeUrl(part);
+            if (!candidate.isBlank()) links.add(candidate);
+        }
+        return links;
+    }
+
+    private static String normalizeUrl(String url) {
+        String normalized = url.trim();
+        return normalized.startsWith("/") ? normalized.substring(1) : normalized;
     }
 
     public void markWorkerRegistered() {
