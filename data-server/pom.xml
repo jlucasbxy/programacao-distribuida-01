@@ -19,11 +19,6 @@
         <version>3.6.3</version>
         <configuration>
           <mainClass>com.example.dataserver.Main</mainClass>
-          <arguments>
-            <argument>--server</argument>
-            <argument>9090</argument>
-            <argument>${project.basedir}/src/main/resources/internet-mock.json</argument>
-          </arguments>
         </configuration>
       </plugin>
     </plugins>
