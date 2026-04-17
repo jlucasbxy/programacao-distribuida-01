@@ -24,7 +24,7 @@ public class MainE2ETest {
         String dataFilePath = MainE2ETest.class.getClassLoader()
                 .getResource("test-internet-mock.json")
                 .getPath();
-        ServerConfig config = ServerConfig.fromArgs(new String[]{String.valueOf(serverPort), dataFilePath});
+        DataServerConfig config = DataServerConfig.fromArgs(new String[]{String.valueOf(serverPort), dataFilePath});
         DataServer server = new DataServer(config);
         Thread serverThread = new Thread(server::start, "test-data-server");
         serverThread.setDaemon(true);
