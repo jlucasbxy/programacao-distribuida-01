@@ -111,7 +111,7 @@ public class Coordinator {
     }
 
     private WorkerState registerWorker(String registrationLine) {
-        CoordinatorMessageSupport.RegisterRequest req = CoordinatorMessageSupport.parseRegister(registrationLine);
+        RegisterRequest req = RegisterRequest.parse(registrationLine);
         if (req == null) {
             return null;
         }
@@ -131,7 +131,7 @@ public class Coordinator {
             return "STOP";
         }
 
-        return switch (CoordinatorMessageSupport.parseMessageType(line)) {
+        return switch (MessageType.parse(line)) {
             case REQUEST -> handleTaskRequest(worker);
             case FOUND -> {
                 int added = crawlState.addFoundLinks(worker, line.trim());

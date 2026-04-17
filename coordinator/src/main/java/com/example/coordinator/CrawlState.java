@@ -34,7 +34,7 @@ public class CrawlState {
     public boolean enqueueIfNew(String url) {
         if (url == null) return false;
 
-        String normalized = CoordinatorMessageSupport.normalizeUrl(url);
+        String normalized = MessageType.normalizeUrl(url);
         if (normalized.isEmpty()) return false;
 
         if (!visitedUrls.add(normalized)) return false;
@@ -74,7 +74,7 @@ public class CrawlState {
         completeTask(worker);
         worker.markIdle();
 
-        List<String> links = CoordinatorMessageSupport.parseFoundLinks(message);
+        List<String> links = MessageType.parseFoundLinks(message);
         int added = 0;
         for (String link : links) {
             if (enqueueIfNew(link)) added++;
