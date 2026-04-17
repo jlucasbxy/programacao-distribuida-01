@@ -8,42 +8,31 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class Coordinator {
     private final CoordinatorConfig config;
-    private final BlockingQueue<String> frontierQueue;
-    private final Set<String> visitedUrls;
     private final ConcurrentHashMap<String, WorkerState> workers;
-    private final AtomicInteger tasksInFlight;
+    private final CrawlState crawlState;
     private final AtomicBoolean running;
-    private final AtomicBoolean completionReached;
-    private final AtomicBoolean hadAnyWorker;
 
     private volatile ServerSocket serverSocket;
 
     public Coordinator(CoordinatorConfig config) {
         this.config = config;
-        this.frontierQueue = new LinkedBlockingQueue<>();
-        this.visitedUrls = ConcurrentHashMap.newKeySet();
         this.workers = new ConcurrentHashMap<>();
-        this.tasksInFlight = new AtomicInteger(0);
+        this.crawlState = new CrawlState(workers);
         this.running = new AtomicBoolean(true);
-        this.completionReached = new AtomicBoolean(false);
-        this.hadAnyWorker = new AtomicBoolean(false);
+
+        crawlState.setOnCompletion(this::requestShutdown);
 
         for (String seed : config.seeds()) {
-            enqueueIfNew(seed);
+            crawlState.enqueueIfNew(seed);
         }
     }
 
@@ -55,7 +44,7 @@ public class Coordinator {
             Runtime.getRuntime().addShutdownHook(new Thread(this::requestShutdown));
 
             System.out.println("Coordinator listening on port " + config.port()
-                    + " with " + frontierQueue.size() + " initial seed(s).");
+                    + " with " + crawlState.frontierSize() + " initial seed(s).");
 
             while (running.get()) {
                 try {
@@ -92,7 +81,7 @@ public class Coordinator {
                 return;
             }
 
-            worker = registerWorker(registrationLine, workerSocket);
+            worker = registerWorker(registrationLine);
             if (worker == null) {
                 writer.println("ERROR INVALID_REGISTER");
                 return;
@@ -116,17 +105,13 @@ public class Coordinator {
         } finally {
             if (worker != null) {
                 workers.remove(worker.id());
-                String taskToRetry = worker.releaseTaskWithoutCompleting();
-                if (taskToRetry != null) {
-                    tasksInFlight.decrementAndGet();
-                    frontierQueue.offer(taskToRetry);
-                }
-                evaluateCompletion();
+                crawlState.retryTask(worker);
+                crawlState.evaluateCompletion();
             }
         }
     }
 
-    private WorkerState registerWorker(String registrationLine, Socket socket) {
+    private WorkerState registerWorker(String registrationLine) {
         String normalized = registrationLine == null ? "" : registrationLine.trim();
         if (!normalized.startsWith(CoordinatorMessageSupport.REGISTER_PREFIX)) {
             return null;
@@ -152,7 +137,7 @@ public class Coordinator {
 
         WorkerState worker = new WorkerState(workerId, capacity);
         workers.put(worker.id(), worker);
-        hadAnyWorker.set(true);
+        crawlState.markWorkerRegistered();
         return worker;
     }
 
@@ -162,7 +147,7 @@ public class Coordinator {
             return "ERROR EMPTY_MESSAGE";
         }
 
-        if (completionReached.get()) {
+        if (crawlState.isCompletionReached()) {
             return "STOP";
         }
 
@@ -171,22 +156,22 @@ public class Coordinator {
         }
 
         if (message.startsWith(CoordinatorMessageSupport.FOUND_PREFIX)) {
-            int added = handleFound(worker, message);
-            evaluateCompletion();
+            int added = crawlState.addFoundLinks(worker, message);
+            crawlState.evaluateCompletion();
             return "ACK FOUND " + added;
         }
 
         if (message.startsWith(CoordinatorMessageSupport.DONE_PREFIX)) {
-            completeTask(worker);
+            crawlState.completeTask(worker);
             worker.markIdle();
-            evaluateCompletion();
+            crawlState.evaluateCompletion();
             return "ACK DONE";
         }
 
         if (message.equals(CoordinatorMessageSupport.IDLE)) {
             worker.markIdle();
-            evaluateCompletion();
-            return completionReached.get() ? "STOP" : "ACK IDLE";
+            crawlState.evaluateCompletion();
+            return crawlState.isCompletionReached() ? "STOP" : "ACK IDLE";
         }
 
         if (message.equals(CoordinatorMessageSupport.HEARTBEAT)) {
@@ -201,7 +186,7 @@ public class Coordinator {
     }
 
     private String handleTaskRequest(WorkerState worker) {
-        if (completionReached.get()) {
+        if (crawlState.isCompletionReached()) {
             return "STOP";
         }
 
@@ -209,78 +194,20 @@ public class Coordinator {
             return "ERROR WORK_IN_PROGRESS";
         }
 
-        String nextUrl = frontierQueue.poll();
+        String nextUrl = crawlState.pollTask();
         if (nextUrl != null) {
             worker.assignTask(nextUrl);
-            tasksInFlight.incrementAndGet();
+            crawlState.incrementTasksInFlight();
             return "TASK " + nextUrl;
         }
 
         worker.markIdle();
-        evaluateCompletion();
-        if (completionReached.get()) {
+        crawlState.evaluateCompletion();
+        if (crawlState.isCompletionReached()) {
             return "STOP";
         }
 
         return "WAIT";
-    }
-
-    private int handleFound(WorkerState worker, String message) {
-        completeTask(worker);
-        worker.markIdle();
-
-        List<String> links = CoordinatorMessageSupport.parseFoundLinks(message);
-        int added = 0;
-        for (String link : links) {
-            if (enqueueIfNew(link)) {
-                added++;
-            }
-        }
-        return added;
-    }
-
-    private void completeTask(WorkerState worker) {
-        String completedTask = worker.completeTask();
-        if (completedTask != null) {
-            tasksInFlight.decrementAndGet();
-        }
-    }
-
-    private boolean enqueueIfNew(String url) {
-        if (url == null) {
-            return false;
-        }
-
-        String normalized = CoordinatorMessageSupport.normalizeUrl(url);
-        if (normalized.isEmpty()) {
-            return false;
-        }
-
-        if (!visitedUrls.add(normalized)) {
-            return false;
-        }
-
-        frontierQueue.offer(normalized);
-        return true;
-    }
-
-    private void evaluateCompletion() {
-        if (!hadAnyWorker.get()) {
-            return;
-        }
-        if (!frontierQueue.isEmpty()) {
-            return;
-        }
-        if (tasksInFlight.get() > 0) {
-            return;
-        }
-
-        boolean allIdle = workers.values().stream().allMatch(WorkerState::isIdle);
-        if (allIdle) {
-            completionReached.set(true);
-            requestShutdown();
-            System.out.println("Coordinator completed crawl: frontier empty, workers idle, no tasks in flight.");
-        }
     }
 
     private void requestShutdown() {
