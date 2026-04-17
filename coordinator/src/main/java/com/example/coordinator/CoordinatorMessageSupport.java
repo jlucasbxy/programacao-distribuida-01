@@ -14,7 +14,20 @@ final class CoordinatorMessageSupport {
 
     record RegisterRequest(String workerId, int capacity) {}
 
+    enum MessageType { REQUEST, FOUND, DONE, IDLE, HEARTBEAT, QUIT, UNKNOWN }
+
     private CoordinatorMessageSupport() {
+    }
+
+    static MessageType parseMessageType(String line) {
+        String message = line == null ? "" : line.trim();
+        if (message.equals(REQUEST)) return MessageType.REQUEST;
+        if (message.startsWith(FOUND_PREFIX)) return MessageType.FOUND;
+        if (message.startsWith(DONE_PREFIX)) return MessageType.DONE;
+        if (message.equals(IDLE)) return MessageType.IDLE;
+        if (message.equals(HEARTBEAT)) return MessageType.HEARTBEAT;
+        if (message.equals(QUIT)) return MessageType.QUIT;
+        return MessageType.UNKNOWN;
     }
 
     static RegisterRequest parseRegister(String line) {

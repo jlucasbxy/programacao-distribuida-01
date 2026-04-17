@@ -123,8 +123,7 @@ public class Coordinator {
     }
 
     private String handleMessage(WorkerState worker, String line) {
-        String message = line == null ? "" : line.trim();
-        if (message.isBlank()) {
+        if (line == null || line.isBlank()) {
             return "ERROR EMPTY_MESSAGE";
         }
 
@@ -132,38 +131,28 @@ public class Coordinator {
             return "STOP";
         }
 
-        if (message.equals(CoordinatorMessageSupport.REQUEST)) {
-            return handleTaskRequest(worker);
-        }
-
-        if (message.startsWith(CoordinatorMessageSupport.FOUND_PREFIX)) {
-            int added = crawlState.addFoundLinks(worker, message);
-            crawlState.evaluateCompletion();
-            return "ACK FOUND " + added;
-        }
-
-        if (message.startsWith(CoordinatorMessageSupport.DONE_PREFIX)) {
-            crawlState.completeTask(worker);
-            worker.markIdle();
-            crawlState.evaluateCompletion();
-            return "ACK DONE";
-        }
-
-        if (message.equals(CoordinatorMessageSupport.IDLE)) {
-            worker.markIdle();
-            crawlState.evaluateCompletion();
-            return crawlState.isCompletionReached() ? "STOP" : "ACK IDLE";
-        }
-
-        if (message.equals(CoordinatorMessageSupport.HEARTBEAT)) {
-            return "PONG";
-        }
-
-        if (message.equals(CoordinatorMessageSupport.QUIT)) {
-            return "BYE";
-        }
-
-        return "ERROR UNKNOWN_COMMAND";
+        return switch (CoordinatorMessageSupport.parseMessageType(line)) {
+            case REQUEST -> handleTaskRequest(worker);
+            case FOUND -> {
+                int added = crawlState.addFoundLinks(worker, line.trim());
+                crawlState.evaluateCompletion();
+                yield "ACK FOUND " + added;
+            }
+            case DONE -> {
+                crawlState.completeTask(worker);
+                worker.markIdle();
+                crawlState.evaluateCompletion();
+                yield "ACK DONE";
+            }
+            case IDLE -> {
+                worker.markIdle();
+                crawlState.evaluateCompletion();
+                yield crawlState.isCompletionReached() ? "STOP" : "ACK IDLE";
+            }
+            case HEARTBEAT -> "PONG";
+            case QUIT -> "BYE";
+            case UNKNOWN -> "ERROR UNKNOWN_COMMAND";
+        };
     }
 
     private String handleTaskRequest(WorkerState worker) {
