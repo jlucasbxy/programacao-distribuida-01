@@ -70,14 +70,16 @@ mvn -f "$ROOT/pom.xml" install -DskipTests -q
 
 if $START_DATA_SERVER; then
     echo "Starting data-server..."
-    mvn -f "$ROOT/data-server/pom.xml" exec:java -Dexec.args="--server" &
+    mvn -f "$ROOT/data-server/pom.xml" exec:java \
+        -Dexec.args="--server $ROOT/data-server/src/main/resources/internet-mock.json" &
     PIDS+=($!)
     sleep 1
 fi
 
 if $START_COORDINATOR; then
     echo "Starting coordinator..."
-    mvn -f "$ROOT/coordinator/pom.xml" exec:java -Dexec.args="--coordinator" &
+    mvn -f "$ROOT/coordinator/pom.xml" exec:java \
+        -Dexec.args="--coordinator --seeds-file $ROOT/coordinator/src/main/resources/default-seeds.txt" &
     PIDS+=($!)
     sleep 1
 fi
