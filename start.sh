@@ -79,7 +79,7 @@ fi
 if $START_COORDINATOR; then
     echo "Starting coordinator..."
     mvn -f "$ROOT/coordinator/pom.xml" exec:java \
-        -Dexec.args="--coordinator --seeds-file $ROOT/coordinator/src/main/resources/default-seeds.txt" &
+        -Dexec.args="--coordinator --seeds-file $ROOT/coordinator/src/main/resources/seeds.txt" &
     PIDS+=($!)
     sleep 1
 fi

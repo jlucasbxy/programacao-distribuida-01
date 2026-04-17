@@ -11,7 +11,7 @@ import java.util.List;
 
 record CoordinatorConfig(int port, int threadPoolSize, List<String> seeds) {
     private static final int DEFAULT_PORT = 7070;
-    private static final String DEFAULT_SEEDS_RESOURCE = "/default-seeds.txt";
+    private static final String DEFAULT_SEEDS_RESOURCE = "/seeds.txt";
 
     static CoordinatorConfig fromArgs(String[] args) {
         int port = DEFAULT_PORT;
