@@ -27,21 +27,29 @@ public class DataServer {
     }
 
     public void start() {
+        try (ServerSocket serverSocket = new ServerSocket(config.port())) {
+            start(serverSocket);
+        } catch (IOException e) {
+            System.err.println("Server failed to start: " + e.getMessage());
+        }
+    }
+
+    public void start(ServerSocket serverSocket) {
         ExecutorService workers = Executors.newFixedThreadPool(config.threadPoolSize());
         AtomicBoolean running = new AtomicBoolean(true);
 
-        try (ServerSocket serverSocket = new ServerSocket(config.port())) {
-            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                running.set(false);
-                try {
-                    serverSocket.close();
-                } catch (IOException ignored) {
-                }
-                workers.shutdown();
-            }));
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            running.set(false);
+            try {
+                serverSocket.close();
+            } catch (IOException ignored) {
+            }
+            workers.shutdown();
+        }));
 
-            System.out.println("Data server listening on port " + config.port() + " with " + internetMock.size() + " pages loaded.");
+        System.out.println("Data server listening on port " + serverSocket.getLocalPort() + " with " + internetMock.size() + " pages loaded.");
 
+        try {
             while (running.get()) {
                 try {
                     Socket workerSocket = serverSocket.accept();
@@ -52,8 +60,6 @@ public class DataServer {
                     }
                 }
             }
-        } catch (IOException e) {
-            System.err.println("Server failed to start: " + e.getMessage());
         } finally {
             workers.shutdown();
             try {

@@ -20,13 +20,14 @@ public class MainE2ETest {
 
     @BeforeClass
     public static void startServer() throws Exception {
-        serverPort = findFreePort();
+        ServerSocket socket = new ServerSocket(0);
+        serverPort = socket.getLocalPort();
         String dataFilePath = MainE2ETest.class.getClassLoader()
                 .getResource("test-internet-mock.json")
                 .getPath();
         DataServerConfig config = DataServerConfig.fromArgs(new String[]{String.valueOf(serverPort), dataFilePath});
         DataServer server = new DataServer(config);
-        Thread serverThread = new Thread(server::start, "test-data-server");
+        Thread serverThread = new Thread(() -> server.start(socket), "test-data-server");
         serverThread.setDaemon(true);
         serverThread.start();
         waitForServer(serverPort, STARTUP_TIMEOUT_MS);
@@ -140,12 +141,6 @@ public class MainE2ETest {
                 sb.append(line).append("\n");
             }
             return sb.toString();
-        }
-    }
-
-    private static int findFreePort() throws IOException {
-        try (ServerSocket s = new ServerSocket(0)) {
-            return s.getLocalPort();
         }
     }
 
