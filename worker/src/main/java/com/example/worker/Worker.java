@@ -114,9 +114,11 @@ public class Worker {
                 + " category=" + category
                 + " links=" + links.size());
 
-        String foundMsg = "FOUND: " + String.join(", ", links) + " FROM " + url;
-        writer.println(foundMsg);
-        reader.readLine();
+        if (!links.isEmpty()) {
+            String foundMsg = "FOUND: " + String.join(", ", links) + " FROM " + url;
+            writer.println(foundMsg);
+            reader.readLine();
+        }
 
         writer.println("DONE");
         reader.readLine();
