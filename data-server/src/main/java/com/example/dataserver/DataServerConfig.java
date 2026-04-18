@@ -1,6 +1,6 @@
 package com.example.dataserver;
 
-record DataServerConfig(int port, String dataFilePath, int threadPoolSize) {
+record DataServerConfig(int port, String dataFilePath) {
     private static final int DEFAULT_PORT = 9090;
     private static final String DEFAULT_DATA_FILE_PATH = "internet-mock.json";
 
@@ -19,7 +19,6 @@ record DataServerConfig(int port, String dataFilePath, int threadPoolSize) {
             }
         }
         String dataFilePath = args.length > 1 ? args[1] : DEFAULT_DATA_FILE_PATH;
-        int threadPoolSize = Math.max(4, Runtime.getRuntime().availableProcessors());
-        return new DataServerConfig(port, dataFilePath, threadPoolSize);
+        return new DataServerConfig(port, dataFilePath);
     }
 }

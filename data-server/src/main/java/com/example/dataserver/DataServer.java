@@ -35,7 +35,7 @@ public class DataServer {
     }
 
     public void start(ServerSocket serverSocket) {
-        ExecutorService workers = Executors.newFixedThreadPool(config.threadPoolSize());
+        ExecutorService workers = Executors.newVirtualThreadPerTaskExecutor();
         AtomicBoolean running = new AtomicBoolean(true);
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
