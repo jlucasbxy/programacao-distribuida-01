@@ -134,8 +134,7 @@ public class Coordinator {
         return switch (MessageType.parse(line)) {
             case REQUEST -> handleTaskRequest(worker);
             case FOUND -> {
-                int added = crawlState.addFoundLinks(worker, line.trim());
-                crawlState.evaluateCompletion();
+                int added = crawlState.addFoundLinks(line.trim());
                 yield "ACK FOUND " + added;
             }
             case DONE -> {

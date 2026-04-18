@@ -71,10 +71,7 @@ public class CrawlState {
         }
     }
 
-    public synchronized int addFoundLinks(WorkerState worker, String message) {
-        completeTask(worker);
-        worker.markIdle();
-
+    public synchronized int addFoundLinks(String message) {
         List<String> links = parseFoundLinks(message);
         int added = 0;
         for (String link : links) {
