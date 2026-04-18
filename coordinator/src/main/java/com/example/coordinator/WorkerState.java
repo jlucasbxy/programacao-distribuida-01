@@ -3,7 +3,7 @@ package com.example.coordinator;
 final class WorkerState {
     private final String id;
     private final int capacity;
-    private volatile boolean idle;
+    private boolean idle;
     private String currentTask;
 
     WorkerState(String id, int capacity) {
@@ -47,7 +47,7 @@ final class WorkerState {
         this.idle = true;
     }
 
-    boolean isIdle() {
+    synchronized boolean isIdle() {
         return idle;
     }
 }
