@@ -164,10 +164,8 @@ public class Coordinator {
             return "ERROR WORK_IN_PROGRESS";
         }
 
-        String nextUrl = crawlState.pollTask();
+        String nextUrl = crawlState.pollAndAssign(worker);
         if (nextUrl != null) {
-            worker.assignTask(nextUrl);
-            crawlState.incrementTasksInFlight();
             return "TASK " + nextUrl;
         }
 

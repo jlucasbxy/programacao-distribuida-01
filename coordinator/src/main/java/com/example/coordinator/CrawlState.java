@@ -44,26 +44,27 @@ public class CrawlState {
         return true;
     }
 
-    public String pollTask() {
-        return frontierQueue.poll();
+    public synchronized String pollAndAssign(WorkerState worker) {
+        String nextUrl = frontierQueue.poll();
+        if (nextUrl != null) {
+            worker.assignTask(nextUrl);
+            tasksInFlight.incrementAndGet();
+        }
+        return nextUrl;
     }
 
     public int frontierSize() {
         return frontierQueue.size();
     }
 
-    public void incrementTasksInFlight() {
-        tasksInFlight.incrementAndGet();
-    }
-
-    public void completeTask(WorkerState worker) {
+    public synchronized void completeTask(WorkerState worker) {
         String completedTask = worker.completeTask();
         if (completedTask != null) {
             tasksInFlight.decrementAndGet();
         }
     }
 
-    public void retryTask(WorkerState worker) {
+    public synchronized void retryTask(WorkerState worker) {
         String task = worker.releaseTaskWithoutCompleting();
         if (task != null) {
             tasksInFlight.decrementAndGet();
@@ -71,7 +72,7 @@ public class CrawlState {
         }
     }
 
-    public int addFoundLinks(WorkerState worker, String message) {
+    public synchronized int addFoundLinks(WorkerState worker, String message) {
         completeTask(worker);
         worker.markIdle();
 
@@ -111,7 +112,7 @@ public class CrawlState {
         return completionReached.get();
     }
 
-    public void evaluateCompletion() {
+    public synchronized void evaluateCompletion() {
         if (!hadAnyWorker.get()) return;
         if (!frontierQueue.isEmpty()) return;
         if (tasksInFlight.get() > 0) return;
