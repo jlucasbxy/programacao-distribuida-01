@@ -14,7 +14,7 @@ public record WorkerConfig(
     private static final int DEFAULT_COORDINATOR_PORT = 7070;
     private static final String DEFAULT_DATA_SERVER_HOST = "localhost";
     private static final int DEFAULT_DATA_SERVER_PORT = 9090;
-    private static final int DEFAULT_CAPACITY = 2;
+    private static final int DEFAULT_CAPACITY = 1;
 
     public static WorkerConfig fromArgs(String[] args) {
         String coordinatorHost = DEFAULT_COORDINATOR_HOST;
