@@ -36,7 +36,7 @@ public class Coordinator {
     }
 
     public void start() throws IOException {
-        ExecutorService workerConnections = Executors.newFixedThreadPool(config.threadPoolSize());
+        ExecutorService workerConnections = Executors.newVirtualThreadPerTaskExecutor();
 
         try (ServerSocket server = new ServerSocket(config.port())) {
             this.serverSocket = server;

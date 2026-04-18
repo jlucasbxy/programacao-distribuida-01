@@ -9,7 +9,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
-record CoordinatorConfig(int port, int threadPoolSize, List<String> seeds) {
+record CoordinatorConfig(int port, List<String> seeds) {
     private static final int DEFAULT_PORT = 7070;
     private static final String DEFAULT_SEEDS_RESOURCE = "/seeds.txt";
 
@@ -40,8 +40,7 @@ record CoordinatorConfig(int port, int threadPoolSize, List<String> seeds) {
 
         List<String> seeds = seedsFile != null ? loadSeedsFromFile(seedsFile) : loadDefaultSeeds();
 
-        int threadPoolSize = Math.max(4, Runtime.getRuntime().availableProcessors());
-        return new CoordinatorConfig(port, threadPoolSize, seeds);
+        return new CoordinatorConfig(port, seeds);
     }
 
     private static List<String> loadSeedsFromFile(String path) {
