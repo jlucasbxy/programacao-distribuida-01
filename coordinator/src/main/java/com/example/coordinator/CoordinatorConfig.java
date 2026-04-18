@@ -1,21 +1,14 @@
 package com.example.coordinator;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.List;
 
-record CoordinatorConfig(int port, List<String> seeds) {
+record CoordinatorConfig(int port, String seedsFile) {
     private static final int DEFAULT_PORT = 7070;
-    private static final String DEFAULT_SEEDS_RESOURCE = "/seeds.txt";
+    private static final String DEFAULT_SEEDS_FILE = "seeds.txt";
 
     static CoordinatorConfig fromArgs(String[] args) {
         int port = DEFAULT_PORT;
-        String seedsFile = null;
+        String seedsFile = DEFAULT_SEEDS_FILE;
 
         for (int i = 0; i < args.length; i++) {
             if ("--seeds-file".equals(args[i])) {
@@ -38,46 +31,6 @@ record CoordinatorConfig(int port, List<String> seeds) {
             }
         }
 
-        List<String> seeds = seedsFile != null ? loadSeedsFromFile(seedsFile) : loadDefaultSeeds();
-
-        return new CoordinatorConfig(port, seeds);
-    }
-
-    private static List<String> loadSeedsFromFile(String path) {
-        try {
-            List<String> seeds = parseLines(Files.newBufferedReader(Paths.get(path)));
-            if (seeds.isEmpty()) {
-                System.err.println("Seeds file is empty: " + path + ". Falling back to defaults.");
-                return loadDefaultSeeds();
-            }
-            return seeds;
-        } catch (IOException e) {
-            System.err.println("Could not read seeds file: " + path + ". Falling back to defaults.");
-            return loadDefaultSeeds();
-        }
-    }
-
-    private static List<String> loadDefaultSeeds() {
-        try (InputStream is = CoordinatorConfig.class.getResourceAsStream(DEFAULT_SEEDS_RESOURCE)) {
-            if (is == null) return List.of("google.com");
-            List<String> seeds = parseLines(new BufferedReader(new InputStreamReader(is)));
-            return seeds.isEmpty() ? List.of("google.com") : seeds;
-        } catch (IOException e) {
-            return List.of("google.com");
-        }
-    }
-
-    private static List<String> parseLines(BufferedReader reader) throws IOException {
-        List<String> seeds = new ArrayList<>();
-        try (reader) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String seed = line.strip();
-                if (!seed.isEmpty() && !seed.startsWith("#")) {
-                    seeds.add(seed);
-                }
-            }
-        }
-        return List.copyOf(seeds);
+        return new CoordinatorConfig(port, seedsFile);
     }
 }

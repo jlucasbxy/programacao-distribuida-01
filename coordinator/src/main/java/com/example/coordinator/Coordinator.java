@@ -30,7 +30,7 @@ public class Coordinator {
 
         crawlState.setOnCompletion(this::requestShutdown);
 
-        for (String seed : config.seeds()) {
+        for (String seed : SeedsLoader.load(config.seedsFile())) {
             crawlState.enqueueIfNew(seed);
         }
     }
