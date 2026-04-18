@@ -7,13 +7,15 @@ START_DATA_SERVER=false
 START_COORDINATOR=false
 START_WORKERS=false
 NUM_WORKERS=1
+WORKER_CAPACITY=1
 
 usage() {
-    echo "Usage: $0 [--all] [--data-server] [--coordinator] [--workers [N]]"
+    echo "Usage: $0 [--all] [--data-server] [--coordinator] [--workers [N]] [--capacity C]"
     echo "  --all           Start all services (default if no flags given)"
     echo "  --data-server   Start only the data-server"
     echo "  --coordinator   Start only the coordinator"
     echo "  --workers [N]   Start N workers (default: 1)"
+    echo "  --capacity C    Set capacity per worker (default: 1)"
     exit 1
 }
 
@@ -44,6 +46,16 @@ else
                 if [[ $# -gt 0 && "$1" =~ ^[0-9]+$ ]]; then
                     NUM_WORKERS="$1"
                     shift
+                fi
+                ;;
+            --capacity)
+                shift
+                if [[ $# -gt 0 && "$1" =~ ^[0-9]+$ ]]; then
+                    WORKER_CAPACITY="$1"
+                    shift
+                else
+                    echo "Error: --capacity requires a numeric argument"
+                    usage
                 fi
                 ;;
             *)
@@ -92,7 +104,7 @@ fi
 if $START_WORKERS; then
     echo "Starting $NUM_WORKERS worker(s)..."
     for i in $(seq 1 "$NUM_WORKERS"); do
-        mvn -f "$ROOT/worker/pom.xml" exec:java -Dexec.args="--worker-id worker-$i" &
+        mvn -f "$ROOT/worker/pom.xml" exec:java -Dexec.args="--worker-id worker-$i --capacity $WORKER_CAPACITY" &
         PIDS+=($!)
     done
 fi
