@@ -7,13 +7,12 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class CrawlState {
     private final BlockingQueue<String> frontierQueue;
     private final Set<String> visitedUrls;
     private final ConcurrentHashMap<String, WorkerState> workers;
-    private final AtomicInteger tasksInFlight;
+    private int tasksInFlight;
     private final AtomicBoolean completionReached;
     private final AtomicBoolean hadAnyWorker;
 
@@ -23,7 +22,7 @@ public class CrawlState {
         this.frontierQueue = new LinkedBlockingQueue<>();
         this.visitedUrls = ConcurrentHashMap.newKeySet();
         this.workers = workers;
-        this.tasksInFlight = new AtomicInteger(0);
+        this.tasksInFlight = 0;
         this.completionReached = new AtomicBoolean(false);
         this.hadAnyWorker = new AtomicBoolean(false);
     }
@@ -48,7 +47,7 @@ public class CrawlState {
         String nextUrl = frontierQueue.poll();
         if (nextUrl != null) {
             worker.assignTask(nextUrl);
-            tasksInFlight.incrementAndGet();
+            tasksInFlight++;
         }
         return nextUrl;
     }
@@ -60,14 +59,14 @@ public class CrawlState {
     public synchronized void completeTask(WorkerState worker) {
         String completedTask = worker.completeTask();
         if (completedTask != null) {
-            tasksInFlight.decrementAndGet();
+            tasksInFlight--;
         }
     }
 
     public synchronized void retryTask(WorkerState worker) {
         String task = worker.releaseTaskWithoutCompleting();
         if (task != null) {
-            tasksInFlight.decrementAndGet();
+            tasksInFlight--;
             frontierQueue.offer(task);
         }
     }
@@ -115,7 +114,7 @@ public class CrawlState {
     public synchronized void evaluateCompletion() {
         if (!hadAnyWorker.get()) return;
         if (!frontierQueue.isEmpty()) return;
-        if (tasksInFlight.get() > 0) return;
+        if (tasksInFlight > 0) return;
 
         boolean allIdle = workers.values().stream().allMatch(WorkerState::isIdle);
         if (allIdle && completionReached.compareAndSet(false, true)) {
