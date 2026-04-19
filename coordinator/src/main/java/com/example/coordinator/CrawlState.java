@@ -31,7 +31,15 @@ public class CrawlState {
         this.onCompletion = onCompletion;
     }
 
-    public boolean enqueueIfNew(String url) {
+    public int enqueueAllIfNew(List<String> urls) {
+        int added = 0;
+        for (String url : urls) {
+            if (enqueueIfNew(url)) added++;
+        }
+        return added;
+    }
+
+    private boolean enqueueIfNew(String url) {
         if (url == null) return false;
 
         String normalized = normalizeUrl(url);
