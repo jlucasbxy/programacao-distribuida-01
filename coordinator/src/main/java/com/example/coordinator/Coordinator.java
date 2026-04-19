@@ -9,8 +9,8 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -96,14 +96,7 @@ public class Coordinator {
 
             String line;
             while ((line = reader.readLine()) != null) {
-                HandleResult result = handleMessage(worker, line);
-                writer.println(result.response());
-                if (result.dispatchAfter()) {
-                    markWorkerIdle(worker);
-                }
-                if ("BYE".equals(result.response())) {
-                    break;
-                }
+                if (!handleMessage(worker, writer, line)) break;
             }
         } catch (IOException e) {
             if (running.get()) {
@@ -139,28 +132,32 @@ public class Coordinator {
         crawlState.evaluateCompletion();
     }
 
-    private HandleResult handleMessage(WorkerState worker, String line) {
+    private boolean handleMessage(WorkerState worker, PrintWriter writer, String line) {
         if (line == null || line.isBlank()) {
-            return new HandleResult("ERROR EMPTY_MESSAGE", false);
+            writer.println("ERROR EMPTY_MESSAGE");
+            return true;
         }
 
-        return switch (MessageType.parse(line)) {
+        switch (MessageType.parse(line)) {
             case FOUND -> {
                 int added = crawlState.addFoundLinks(line.trim());
                 if (added > 0) tryDispatch();
-                yield new HandleResult("ACK FOUND " + added, false);
+                writer.println("ACK FOUND " + added);
             }
             case DONE -> {
                 crawlState.completeTask(worker);
                 crawlState.evaluateCompletion();
-                yield new HandleResult("ACK DONE", true);
+                writer.println("ACK DONE");
+                markWorkerIdle(worker);
             }
-            case QUIT -> new HandleResult("BYE", false);
-            case UNKNOWN -> new HandleResult("ERROR UNKNOWN_COMMAND", false);
-        };
+            case QUIT -> {
+                writer.println("BYE");
+                return false;
+            }
+            case UNKNOWN -> writer.println("ERROR UNKNOWN_COMMAND");
+        }
+        return true;
     }
-
-    private record HandleResult(String response, boolean dispatchAfter) {}
 
     private void markWorkerIdle(WorkerState worker) {
         String url;
@@ -175,25 +172,21 @@ public class Coordinator {
     }
 
     private void tryDispatch() {
-        List<Assignment> toSend = null;
+        Map<WorkerState, String> toSend = null;
         synchronized (dispatchLock) {
             while (!idleWorkers.isEmpty()) {
                 WorkerState w = idleWorkers.peekFirst();
                 String url = crawlState.pollAndAssign(w);
                 if (url == null) break;
                 idleWorkers.pollFirst();
-                if (toSend == null) toSend = new ArrayList<>();
-                toSend.add(new Assignment(w, url));
+                if (toSend == null) toSend = new LinkedHashMap<>();
+                toSend.put(w, url);
             }
         }
         if (toSend != null) {
-            for (Assignment a : toSend) {
-                a.worker.sendLine("TASK " + a.url);
-            }
+            toSend.forEach((w, url) -> w.sendLine("TASK " + url));
         }
     }
-
-    private record Assignment(WorkerState worker, String url) {}
 
     private void onCrawlComplete() {
         Thread.ofVirtual().name("stop-broadcaster").start(() -> {
