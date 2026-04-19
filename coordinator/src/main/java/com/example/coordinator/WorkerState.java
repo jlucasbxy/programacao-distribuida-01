@@ -1,18 +1,20 @@
 package com.example.coordinator;
 
 import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 final class WorkerState {
     private final String id;
     private final int capacity;
-    private boolean idle;
-    private String currentTask;
+    private final Set<String> currentTasks = new HashSet<>();
     private volatile PrintWriter writer;
 
     WorkerState(String id, int capacity) {
         this.id = id;
         this.capacity = capacity;
-        this.idle = true;
     }
 
     String id() {
@@ -34,26 +36,25 @@ final class WorkerState {
         }
     }
 
+    synchronized boolean hasCapacity() {
+        return currentTasks.size() < capacity;
+    }
+
     synchronized void assignTask(String task) {
-        this.currentTask = task;
-        this.idle = false;
+        currentTasks.add(task);
     }
 
-    synchronized String completeTask() {
-        String done = this.currentTask;
-        this.currentTask = null;
-        this.idle = true;
-        return done;
+    synchronized boolean completeTask(String task) {
+        return currentTasks.remove(task);
     }
 
-    synchronized String releaseTaskWithoutCompleting() {
-        String task = this.currentTask;
-        this.currentTask = null;
-        this.idle = true;
-        return task;
+    synchronized List<String> releaseAllTasks() {
+        List<String> released = new ArrayList<>(currentTasks);
+        currentTasks.clear();
+        return released;
     }
 
     synchronized boolean isIdle() {
-        return idle;
+        return currentTasks.isEmpty();
     }
 }

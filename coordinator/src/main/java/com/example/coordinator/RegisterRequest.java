@@ -2,7 +2,7 @@ package com.example.coordinator;
 
 import java.util.UUID;
 
-record RegisterRequest(String workerId, int capacity, String baseWorkerId, int totalCapacity) {
+record RegisterRequest(String workerId, int capacity) {
 
     private static final String PREFIX = "REGISTER";
 
@@ -26,17 +26,6 @@ record RegisterRequest(String workerId, int capacity, String baseWorkerId, int t
             }
         }
 
-        String baseWorkerId = parts.length >= 4 && !parts[3].isBlank() ? parts[3] : workerId;
-
-        int totalCapacity = capacity;
-        if (parts.length >= 5) {
-            try {
-                totalCapacity = Math.max(1, Integer.parseInt(parts[4]));
-            } catch (NumberFormatException ignored) {
-                totalCapacity = capacity;
-            }
-        }
-
-        return new RegisterRequest(workerId, capacity, baseWorkerId, totalCapacity);
+        return new RegisterRequest(workerId, capacity);
     }
 }

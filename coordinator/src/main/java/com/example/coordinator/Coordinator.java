@@ -9,10 +9,6 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayDeque;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -23,15 +19,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class Coordinator {
     private final CoordinatorConfig config;
     private final ConcurrentHashMap<String, WorkerState> workers;
-    private final Set<String> loggedBaseWorkerIds = ConcurrentHashMap.newKeySet();
     private final CrawlState crawlState;
     private final AtomicBoolean running;
 
     private static final int WORKER_TIMEOUT_MS  = 15_000;
     private static final int PING_INTERVAL_MS   = 5_000;
-
-    private final Object dispatchLock = new Object();
-    private final ArrayDeque<WorkerState> idleWorkers = new ArrayDeque<>();
 
     private volatile ServerSocket serverSocket;
     private volatile ExecutorService workerConnections;
@@ -129,7 +121,7 @@ public class Coordinator {
             }
 
             writer.println("REGISTERED " + worker.id() + " " + worker.capacity());
-            markWorkerIdle(worker);
+            tryDispatch();
 
             String line;
             while ((line = reader.readLine()) != null) {
@@ -158,19 +150,14 @@ public class Coordinator {
         worker.attachWriter(writer);
         workers.put(worker.id(), worker);
         crawlState.markWorkerRegistered();
-        if (loggedBaseWorkerIds.add(req.baseWorkerId())) {
-            System.out.println("Worker connected: " + req.baseWorkerId() + " (capacity=" + req.totalCapacity() + ")");
-        }
+        System.out.println("Worker connected: " + req.workerId() + " (capacity=" + req.capacity() + ")");
         return worker;
     }
 
     private void removeWorker(WorkerState worker) {
         workers.remove(worker.id());
-        synchronized (dispatchLock) {
-            idleWorkers.remove(worker);
-        }
-        boolean requeued = crawlState.retryTask(worker);
-        if (requeued) tryDispatch();
+        int requeued = crawlState.retryTasks(worker);
+        if (requeued > 0) tryDispatch();
         crawlState.evaluateCompletion();
     }
 
@@ -183,14 +170,17 @@ public class Coordinator {
         switch (MessageType.parse(line)) {
             case FOUND -> {
                 int added = crawlState.addFoundLinks(line.trim());
-                if (added > 0) tryDispatch();
                 writer.println("ACK FOUND " + added);
+                if (added > 0) tryDispatch();
             }
             case DONE -> {
-                crawlState.completeTask(worker);
-                crawlState.evaluateCompletion();
+                String url = parseDoneUrl(line);
+                if (url != null) {
+                    crawlState.completeTask(worker, url);
+                }
                 writer.println("ACK DONE");
-                markWorkerIdle(worker);
+                crawlState.evaluateCompletion();
+                tryDispatch();
             }
             case QUIT -> {
                 writer.println("BYE");
@@ -202,32 +192,19 @@ public class Coordinator {
         return true;
     }
 
-    private void markWorkerIdle(WorkerState worker) {
-        String url;
-        synchronized (dispatchLock) {
-            url = crawlState.pollAndAssign(worker);
-            if (url == null) {
-                idleWorkers.addLast(worker);
-                return;
-            }
-        }
-        worker.sendLine("TASK " + url);
+    private static String parseDoneUrl(String line) {
+        String trimmed = line.trim();
+        if (trimmed.length() <= "DONE".length()) return null;
+        String payload = trimmed.substring("DONE".length()).trim();
+        return payload.isBlank() ? null : payload;
     }
 
     private void tryDispatch() {
-        Map<WorkerState, String> toSend = null;
-        synchronized (dispatchLock) {
-            while (!idleWorkers.isEmpty()) {
-                WorkerState w = idleWorkers.peekFirst();
-                String url = crawlState.pollAndAssign(w);
-                if (url == null) break;
-                idleWorkers.pollFirst();
-                if (toSend == null) toSend = new LinkedHashMap<>();
-                toSend.put(w, url);
+        for (WorkerState w : workers.values()) {
+            String url;
+            while ((url = crawlState.pollAndAssign(w)) != null) {
+                w.sendLine("TASK " + url);
             }
-        }
-        if (toSend != null) {
-            toSend.forEach((w, url) -> w.sendLine("TASK " + url));
         }
     }
 
