@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 class SeedsLoader {
-    static List<String> load(String path) {
+    static List<String> load(String path, int limit) {
         try (BufferedReader reader = Files.newBufferedReader(Paths.get(path))) {
             List<String> seeds = new ArrayList<>();
             String line;
@@ -16,6 +16,7 @@ class SeedsLoader {
                 String seed = line.strip();
                 if (!seed.isEmpty() && !seed.startsWith("#")) {
                     seeds.add(seed);
+                    if (limit > 0 && seeds.size() >= limit) break;
                 }
             }
             return List.copyOf(seeds);

@@ -1,14 +1,14 @@
 package com.example.coordinator;
 
-import java.util.List;
-
-record CoordinatorConfig(int port, String seedsFile) {
+record CoordinatorConfig(int port, String seedsFile, int seedsCount) {
     private static final int DEFAULT_PORT = 7070;
     private static final String DEFAULT_SEEDS_FILE = "seeds.txt";
+    private static final int UNLIMITED_SEEDS = -1;
 
     static CoordinatorConfig fromArgs(String[] args) {
         int port = DEFAULT_PORT;
         String seedsFile = DEFAULT_SEEDS_FILE;
+        int seedsCount = UNLIMITED_SEEDS;
 
         for (int i = 0; i < args.length; i++) {
             if ("--seeds-file".equals(args[i])) {
@@ -16,6 +16,21 @@ record CoordinatorConfig(int port, String seedsFile) {
                     seedsFile = args[++i];
                 } else {
                     System.err.println("--seeds-file requires a path argument.");
+                }
+            } else if ("--seeds-count".equals(args[i])) {
+                if (i + 1 < args.length) {
+                    try {
+                        int parsed = Integer.parseInt(args[++i]);
+                        if (parsed < 1) {
+                            System.err.println("--seeds-count must be >= 1. Ignoring.");
+                        } else {
+                            seedsCount = parsed;
+                        }
+                    } catch (NumberFormatException e) {
+                        System.err.println("Invalid --seeds-count value. Ignoring.");
+                    }
+                } else {
+                    System.err.println("--seeds-count requires a numeric argument.");
                 }
             } else if (i == 0) {
                 try {
@@ -31,6 +46,6 @@ record CoordinatorConfig(int port, String seedsFile) {
             }
         }
 
-        return new CoordinatorConfig(port, seedsFile);
+        return new CoordinatorConfig(port, seedsFile, seedsCount);
     }
 }

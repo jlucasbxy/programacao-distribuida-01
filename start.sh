@@ -8,14 +8,16 @@ START_COORDINATOR=false
 START_WORKERS=false
 NUM_WORKERS=1
 WORKER_CAPACITY=1
+SEEDS_COUNT=""
 
 usage() {
-    echo "Usage: $0 [--all] [--data-server] [--coordinator] [--workers [N]] [--capacity C]"
-    echo "  --all           Start all services (default if no flags given)"
-    echo "  --data-server   Start only the data-server"
-    echo "  --coordinator   Start only the coordinator"
-    echo "  --workers [N]   Start N workers (default: 1)"
-    echo "  --capacity C    Set capacity per worker (default: 1)"
+    echo "Usage: $0 [--all] [--data-server] [--coordinator] [--workers [N]] [--capacity C] [--seeds-count N]"
+    echo "  --all             Start all services (default if no flags given)"
+    echo "  --data-server     Start only the data-server"
+    echo "  --coordinator     Start only the coordinator"
+    echo "  --workers [N]     Start N workers (default: 1)"
+    echo "  --capacity C      Set capacity per worker (default: 1)"
+    echo "  --seeds-count N   Limit coordinator to read only N seeds from the file"
     exit 1
 }
 
@@ -58,6 +60,16 @@ else
                     usage
                 fi
                 ;;
+            --seeds-count)
+                shift
+                if [[ $# -gt 0 && "$1" =~ ^[0-9]+$ ]]; then
+                    SEEDS_COUNT="$1"
+                    shift
+                else
+                    echo "Error: --seeds-count requires a numeric argument"
+                    usage
+                fi
+                ;;
             *)
                 echo "Unknown flag: $1"
                 usage
@@ -91,8 +103,12 @@ fi
 
 if $START_COORDINATOR; then
     echo "Starting coordinator..."
+    COORDINATOR_ARGS="--coordinator --seeds-file $ROOT/coordinator/src/main/resources/seeds.txt"
+    if [[ -n "$SEEDS_COUNT" ]]; then
+        COORDINATOR_ARGS="$COORDINATOR_ARGS --seeds-count $SEEDS_COUNT"
+    fi
     mvn -f "$ROOT/coordinator/pom.xml" exec:java \
-        -Dexec.args="--coordinator --seeds-file $ROOT/coordinator/src/main/resources/seeds.txt" &
+        -Dexec.args="$COORDINATOR_ARGS" &
     PIDS+=($!)
     sleep 1
 fi

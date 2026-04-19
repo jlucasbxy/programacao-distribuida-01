@@ -36,7 +36,7 @@ public class Coordinator {
 
         crawlState.setOnCompletion(this::onCrawlComplete);
 
-        for (String seed : SeedsLoader.load(config.seedsFile())) {
+        for (String seed : SeedsLoader.load(config.seedsFile(), config.seedsCount())) {
             crawlState.enqueueIfNew(seed);
         }
     }
