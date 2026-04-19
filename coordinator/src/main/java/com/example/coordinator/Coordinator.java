@@ -24,7 +24,8 @@ public class Coordinator {
     private final CrawlState crawlState;
     private final AtomicBoolean running;
 
-    private static final int WORKER_TIMEOUT_MS = 15_000;
+    private static final int WORKER_TIMEOUT_MS  = 15_000;
+    private static final int PING_INTERVAL_MS   = 5_000;
 
     private final Object dispatchLock = new Object();
     private final ArrayDeque<WorkerState> idleWorkers = new ArrayDeque<>();
@@ -44,10 +45,21 @@ public class Coordinator {
 
     public void start() throws IOException {
         ExecutorService workerConnections = Executors.newVirtualThreadPerTaskExecutor();
+        Thread pingBroadcaster = Thread.ofVirtual().name("ping-broadcaster").start(() -> {
+            try {
+                while (running.get()) {
+                    Thread.sleep(PING_INTERVAL_MS);
+                    for (WorkerState w : workers.values()) w.sendLine("PING");
+                }
+            } catch (InterruptedException ignored) {}
+        });
 
         try (ServerSocket server = new ServerSocket(config.port())) {
             this.serverSocket = server;
-            Runtime.getRuntime().addShutdownHook(new Thread(this::requestShutdown));
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                pingBroadcaster.interrupt();
+                requestShutdown();
+            }));
 
             System.out.println("Coordinator listening on port " + config.port()
                     + " with " + crawlState.frontierSize() + " initial seed(s).");
@@ -63,6 +75,7 @@ public class Coordinator {
                 }
             }
         } finally {
+            pingBroadcaster.interrupt();
             requestShutdown();
             workerConnections.shutdown();
             try {

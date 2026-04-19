@@ -19,7 +19,8 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class Worker {
-    private static final int PING_INTERVAL_MS = 5_000;
+    private static final int PING_INTERVAL_MS      = 5_000;
+    private static final int COORDINATOR_TIMEOUT_MS = 15_000;
     private static final Map<String, Predicate<String>> CATEGORIES = new LinkedHashMap<>();
 
     static {
@@ -51,6 +52,7 @@ public class Worker {
         try (Socket socket = new Socket(config.coordinatorHost(), config.coordinatorPort());
              PrintWriter writer = new PrintWriter(socket.getOutputStream(), true, StandardCharsets.UTF_8);
              BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8))) {
+            socket.setSoTimeout(COORDINATOR_TIMEOUT_MS);
 
             writer.println("REGISTER " + threadId + " 1");
             String registered = reader.readLine();
@@ -79,18 +81,26 @@ public class Worker {
                     processTask(threadId, url, writer, reader);
                 } else if ("STOP".equals(response)) {
                     writer.println("QUIT");
-                    reader.readLine();
+                    readSkipPing(reader);
                     running = false;
-                } else {
+                } else if (!"PING".equals(response)) {
                     System.err.println("[" + threadId + "] Unexpected response: " + response);
                 }
             }
 
             pingThread.interrupt();
             System.out.println("[" + threadId + "] Crawl complete. Disconnecting.");
+        } catch (java.net.SocketTimeoutException e) {
+            System.err.println("[" + threadId + "] Coordinator timed out (no heartbeat).");
         } catch (IOException e) {
             System.err.println("[" + threadId + "] Error: " + e.getMessage());
         }
+    }
+
+    private String readSkipPing(BufferedReader reader) throws IOException {
+        String line;
+        while ((line = reader.readLine()) != null && "PING".equals(line)) {}
+        return line;
     }
 
     private void processTask(String threadId, String url, PrintWriter writer, BufferedReader reader) throws IOException {
@@ -100,7 +110,7 @@ public class Worker {
         if (page.isError()) {
             System.err.println("[" + threadId + "] Error fetching " + url + ": " + page.error());
             writer.println("DONE");
-            reader.readLine();
+            readSkipPing(reader);
             return;
         }
 
@@ -124,10 +134,10 @@ public class Worker {
         if (!links.isEmpty()) {
             String foundMsg = "FOUND: " + String.join(", ", links) + " FROM " + url;
             writer.println(foundMsg);
-            reader.readLine();
+            readSkipPing(reader);
         }
 
         writer.println("DONE");
-        reader.readLine();
+        readSkipPing(reader);
     }
 }
