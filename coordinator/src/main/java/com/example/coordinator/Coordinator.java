@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -22,6 +23,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class Coordinator {
     private final CoordinatorConfig config;
     private final ConcurrentHashMap<String, WorkerState> workers;
+    private final Set<String> loggedBaseWorkerIds = ConcurrentHashMap.newKeySet();
     private final CrawlState crawlState;
     private final AtomicBoolean running;
 
@@ -127,7 +129,6 @@ public class Coordinator {
             }
 
             writer.println("REGISTERED " + worker.id() + " " + worker.capacity());
-            System.out.println("Worker connected: " + worker.id() + " (capacity=" + worker.capacity() + ")");
             markWorkerIdle(worker);
 
             String line;
@@ -157,6 +158,9 @@ public class Coordinator {
         worker.attachWriter(writer);
         workers.put(worker.id(), worker);
         crawlState.markWorkerRegistered();
+        if (loggedBaseWorkerIds.add(req.baseWorkerId())) {
+            System.out.println("Worker connected: " + req.baseWorkerId() + " (capacity=" + req.totalCapacity() + ")");
+        }
         return worker;
     }
 

@@ -43,7 +43,7 @@ public class Worker {
              BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8))) {
             socket.setSoTimeout(COORDINATOR_TIMEOUT_MS);
 
-            writer.println("REGISTER " + threadId + " 1");
+            writer.println("REGISTER " + threadId + " 1 " + config.workerId() + " " + config.capacity());
             String registered = reader.readLine();
             if (registered == null || !registered.startsWith("REGISTERED")) {
                 System.err.println("[" + threadId + "] Registration failed: " + registered);
