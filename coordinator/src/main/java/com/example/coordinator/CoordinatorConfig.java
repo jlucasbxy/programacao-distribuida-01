@@ -12,40 +12,54 @@ record CoordinatorConfig(int port, String seedsFile, int seedsCount) {
 
         for (int i = 0; i < args.length; i++) {
             if ("--seeds-file".equals(args[i])) {
-                if (i + 1 < args.length) {
-                    seedsFile = args[++i];
-                } else {
-                    System.err.println("--seeds-file requires a path argument.");
-                }
+                seedsFile = parseSeedsFile(args, ++i, seedsFile);
             } else if ("--seeds-count".equals(args[i])) {
-                if (i + 1 < args.length) {
-                    try {
-                        int parsed = Integer.parseInt(args[++i]);
-                        if (parsed < 1) {
-                            System.err.println("--seeds-count must be >= 1. Ignoring.");
-                        } else {
-                            seedsCount = parsed;
-                        }
-                    } catch (NumberFormatException e) {
-                        System.err.println("Invalid --seeds-count value. Ignoring.");
-                    }
-                } else {
-                    System.err.println("--seeds-count requires a numeric argument.");
-                }
+                seedsCount = parseSeedsCount(args, ++i, seedsCount);
             } else if (i == 0) {
-                try {
-                    int parsed = Integer.parseInt(args[i]);
-                    if (parsed < 1 || parsed > 65535) {
-                        System.err.println("Invalid port " + parsed + ". Falling back to " + DEFAULT_PORT + ".");
-                    } else {
-                        port = parsed;
-                    }
-                } catch (NumberFormatException e) {
-                    System.err.println("Invalid port format. Falling back to " + DEFAULT_PORT + ".");
-                }
+                port = parsePort(args[i]);
             }
         }
 
         return new CoordinatorConfig(port, seedsFile, seedsCount);
+    }
+
+    private static String parseSeedsFile(String[] args, int valueIndex, String fallback) {
+        if (valueIndex >= args.length) {
+            System.err.println("--seeds-file requires a path argument.");
+            return fallback;
+        }
+        return args[valueIndex];
+    }
+
+    private static int parseSeedsCount(String[] args, int valueIndex, int fallback) {
+        if (valueIndex >= args.length) {
+            System.err.println("--seeds-count requires a numeric argument.");
+            return fallback;
+        }
+        try {
+            int parsed = Integer.parseInt(args[valueIndex]);
+            if (parsed < 1) {
+                System.err.println("--seeds-count must be >= 1. Ignoring.");
+                return fallback;
+            }
+            return parsed;
+        } catch (NumberFormatException e) {
+            System.err.println("Invalid --seeds-count value. Ignoring.");
+            return fallback;
+        }
+    }
+
+    private static int parsePort(String value) {
+        try {
+            int parsed = Integer.parseInt(value);
+            if (parsed < 1 || parsed > 65535) {
+                System.err.println("Invalid port " + parsed + ". Falling back to " + DEFAULT_PORT + ".");
+                return DEFAULT_PORT;
+            }
+            return parsed;
+        } catch (NumberFormatException e) {
+            System.err.println("Invalid port format. Falling back to " + DEFAULT_PORT + ".");
+            return DEFAULT_PORT;
+        }
     }
 }
