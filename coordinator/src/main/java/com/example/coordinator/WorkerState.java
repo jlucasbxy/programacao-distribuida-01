@@ -1,10 +1,13 @@
 package com.example.coordinator;
 
+import java.io.PrintWriter;
+
 final class WorkerState {
     private final String id;
     private final int capacity;
     private boolean idle;
     private String currentTask;
+    private volatile PrintWriter writer;
 
     WorkerState(String id, int capacity) {
         this.id = id;
@@ -18,6 +21,17 @@ final class WorkerState {
 
     int capacity() {
         return capacity;
+    }
+
+    void attachWriter(PrintWriter writer) {
+        this.writer = writer;
+    }
+
+    void sendLine(String line) {
+        PrintWriter w = this.writer;
+        if (w != null) {
+            w.println(line);
+        }
     }
 
     synchronized void assignTask(String task) {

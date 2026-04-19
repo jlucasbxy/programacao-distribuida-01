@@ -61,15 +61,12 @@ public class Worker {
 
             boolean running = true;
             while (running) {
-                writer.println("REQUEST");
                 String response = reader.readLine();
                 if (response == null) break;
 
                 if (response.startsWith("TASK ")) {
                     String url = response.substring(5).trim();
                     processTask(threadId, url, writer, reader);
-                } else if ("WAIT".equals(response)) {
-                    Thread.sleep(200);
                 } else if ("STOP".equals(response)) {
                     writer.println("QUIT");
                     reader.readLine();
@@ -80,9 +77,8 @@ public class Worker {
             }
 
             System.out.println("[" + threadId + "] Crawl complete. Disconnecting.");
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException e) {
             System.err.println("[" + threadId + "] Error: " + e.getMessage());
-            Thread.currentThread().interrupt();
         }
     }
 
