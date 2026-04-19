@@ -8,6 +8,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -23,11 +24,9 @@ public class Coordinator {
     private final AtomicBoolean running;
 
     private final Object dispatchLock = new Object();
-    private final List<WorkerState> rotation = new ArrayList<>();
-    private int rrIndex = 0;
+    private final ArrayDeque<WorkerState> idleWorkers = new ArrayDeque<>();
 
     private volatile ServerSocket serverSocket;
-    private volatile Thread dispatcherThread;
 
     public Coordinator(CoordinatorConfig config) {
         this.config = config;
@@ -35,8 +34,7 @@ public class Coordinator {
         this.crawlState = new CrawlState(workers);
         this.running = new AtomicBoolean(true);
 
-        crawlState.setOnCompletion(this::signalDispatcher);
-        crawlState.setOnUrlEnqueued(this::signalDispatcher);
+        crawlState.setOnCompletion(this::onCrawlComplete);
 
         for (String seed : SeedsLoader.load(config.seedsFile())) {
             crawlState.enqueueIfNew(seed);
@@ -45,8 +43,6 @@ public class Coordinator {
 
     public void start() throws IOException {
         ExecutorService workerConnections = Executors.newVirtualThreadPerTaskExecutor();
-
-        dispatcherThread = Thread.ofVirtual().name("dispatcher").start(this::dispatchLoop);
 
         try (ServerSocket server = new ServerSocket(config.port())) {
             this.serverSocket = server;
@@ -98,14 +94,16 @@ public class Coordinator {
 
             writer.println("REGISTERED " + worker.id() + " " + worker.capacity());
             System.out.println("Worker connected: " + worker.id() + " (capacity=" + worker.capacity() + ")");
-            signalDispatcher();
+            markWorkerIdle(worker);
 
             String line;
             while ((line = reader.readLine()) != null) {
-                String response = handleMessage(worker, line);
-                writer.println(response);
-                signalDispatcher();
-                if ("BYE".equals(response)) {
+                HandleResult result = handleMessage(worker, line);
+                writer.println(result.response());
+                if (result.dispatchAfter()) {
+                    markWorkerIdle(worker);
+                }
+                if ("BYE".equals(result.response())) {
                     break;
                 }
             }
@@ -115,9 +113,7 @@ public class Coordinator {
             }
         } finally {
             if (worker != null) {
-                unregisterWorker(worker);
-                crawlState.retryTask(worker);
-                crawlState.evaluateCompletion();
+                removeWorker(worker);
             }
         }
     }
@@ -131,111 +127,91 @@ public class Coordinator {
         WorkerState worker = new WorkerState(req.workerId(), req.capacity());
         worker.attachWriter(writer);
         workers.put(worker.id(), worker);
-        synchronized (dispatchLock) {
-            rotation.add(worker);
-        }
         crawlState.markWorkerRegistered();
         return worker;
     }
 
-    private void unregisterWorker(WorkerState worker) {
+    private void removeWorker(WorkerState worker) {
         workers.remove(worker.id());
         synchronized (dispatchLock) {
-            int i = rotation.indexOf(worker);
-            if (i >= 0) {
-                rotation.remove(i);
-                if (rotation.isEmpty()) {
-                    rrIndex = 0;
-                } else {
-                    if (rrIndex > i) rrIndex--;
-                    if (rrIndex >= rotation.size()) rrIndex = 0;
-                }
-            }
-            dispatchLock.notifyAll();
+            idleWorkers.remove(worker);
         }
+        boolean requeued = crawlState.retryTask(worker);
+        if (requeued) tryDispatch();
+        crawlState.evaluateCompletion();
     }
 
-    private String handleMessage(WorkerState worker, String line) {
+    private HandleResult handleMessage(WorkerState worker, String line) {
         if (line == null || line.isBlank()) {
-            return "ERROR EMPTY_MESSAGE";
+            return new HandleResult("ERROR EMPTY_MESSAGE", false);
         }
 
         return switch (MessageType.parse(line)) {
             case FOUND -> {
                 int added = crawlState.addFoundLinks(line.trim());
-                yield "ACK FOUND " + added;
+                if (added > 0) tryDispatch();
+                yield new HandleResult("ACK FOUND " + added, false);
             }
             case DONE -> {
                 crawlState.completeTask(worker);
-                worker.markIdle();
                 crawlState.evaluateCompletion();
-                yield "ACK DONE";
+                yield new HandleResult("ACK DONE", true);
             }
             case IDLE -> {
                 worker.markIdle();
                 crawlState.evaluateCompletion();
-                yield "ACK IDLE";
+                yield new HandleResult("ACK IDLE", true);
             }
-            case HEARTBEAT -> "PONG";
-            case QUIT -> "BYE";
-            case UNKNOWN -> "ERROR UNKNOWN_COMMAND";
+            case HEARTBEAT -> new HandleResult("PONG", false);
+            case QUIT -> new HandleResult("BYE", false);
+            case UNKNOWN -> new HandleResult("ERROR UNKNOWN_COMMAND", false);
         };
     }
 
-    private void dispatchLoop() {
-        try {
-            while (running.get()) {
-                WorkerState target = null;
-                String url = null;
-                synchronized (dispatchLock) {
-                    while (running.get() && !crawlState.isCompletionReached()) {
-                        if (crawlState.frontierSize() > 0) {
-                            target = pickNextIdleWorker();
-                            if (target != null) break;
-                        }
-                        dispatchLock.wait();
-                    }
-                    if (!running.get() || crawlState.isCompletionReached()) break;
-                    url = crawlState.pollAndAssign(target);
-                }
-                if (url != null && target != null) {
-                    target.sendLine("TASK " + url);
-                }
+    private record HandleResult(String response, boolean dispatchAfter) {}
+
+    private void markWorkerIdle(WorkerState worker) {
+        String url;
+        synchronized (dispatchLock) {
+            url = crawlState.pollAndAssign(worker);
+            if (url == null) {
+                idleWorkers.addLast(worker);
+                return;
             }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        } finally {
+        }
+        worker.sendLine("TASK " + url);
+    }
+
+    private void tryDispatch() {
+        List<Assignment> toSend = null;
+        synchronized (dispatchLock) {
+            while (!idleWorkers.isEmpty()) {
+                WorkerState w = idleWorkers.peekFirst();
+                String url = crawlState.pollAndAssign(w);
+                if (url == null) break;
+                idleWorkers.pollFirst();
+                if (toSend == null) toSend = new ArrayList<>();
+                toSend.add(new Assignment(w, url));
+            }
+        }
+        if (toSend != null) {
+            for (Assignment a : toSend) {
+                a.worker.sendLine("TASK " + a.url);
+            }
+        }
+    }
+
+    private record Assignment(WorkerState worker, String url) {}
+
+    private void onCrawlComplete() {
+        Thread.ofVirtual().name("stop-broadcaster").start(() -> {
             broadcastStop();
             requestShutdown();
-        }
-    }
-
-    private WorkerState pickNextIdleWorker() {
-        int n = rotation.size();
-        if (n == 0) return null;
-        for (int i = 0; i < n; i++) {
-            int idx = (rrIndex + i) % n;
-            WorkerState w = rotation.get(idx);
-            if (w.isIdle() && !w.hasAssignedTask()) {
-                rrIndex = (idx + 1) % n;
-                return w;
-            }
-        }
-        return null;
-    }
-
-    private void signalDispatcher() {
-        synchronized (dispatchLock) {
-            dispatchLock.notifyAll();
-        }
+        });
     }
 
     private void broadcastStop() {
-        List<WorkerState> snapshot;
-        synchronized (dispatchLock) {
-            snapshot = new ArrayList<>(rotation);
-        }
-        for (WorkerState w : snapshot) {
+        for (WorkerState w : workers.values()) {
             try {
                 w.sendLine("STOP");
             } catch (Exception ignored) {
@@ -245,7 +221,6 @@ public class Coordinator {
 
     private void requestShutdown() {
         if (!running.compareAndSet(true, false)) return;
-        signalDispatcher();
         ServerSocket socket = this.serverSocket;
         if (socket != null && !socket.isClosed()) {
             try {

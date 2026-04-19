@@ -17,7 +17,6 @@ public class CrawlState {
     private final AtomicBoolean hadAnyWorker;
 
     private volatile Runnable onCompletion;
-    private volatile Runnable onUrlEnqueued;
 
     public CrawlState(ConcurrentHashMap<String, WorkerState> workers) {
         this.frontierQueue = new LinkedBlockingQueue<>();
@@ -32,10 +31,6 @@ public class CrawlState {
         this.onCompletion = onCompletion;
     }
 
-    public void setOnUrlEnqueued(Runnable onUrlEnqueued) {
-        this.onUrlEnqueued = onUrlEnqueued;
-    }
-
     public boolean enqueueIfNew(String url) {
         if (url == null) return false;
 
@@ -45,8 +40,6 @@ public class CrawlState {
         if (!visitedUrls.add(normalized)) return false;
 
         frontierQueue.offer(normalized);
-        Runnable cb = onUrlEnqueued;
-        if (cb != null) cb.run();
         return true;
     }
 
@@ -70,14 +63,12 @@ public class CrawlState {
         }
     }
 
-    public synchronized void retryTask(WorkerState worker) {
+    public synchronized boolean retryTask(WorkerState worker) {
         String task = worker.releaseTaskWithoutCompleting();
-        if (task != null) {
-            tasksInFlight--;
-            frontierQueue.offer(task);
-            Runnable cb = onUrlEnqueued;
-            if (cb != null) cb.run();
-        }
+        if (task == null) return false;
+        tasksInFlight--;
+        frontierQueue.offer(task);
+        return true;
     }
 
     public int addFoundLinks(String message) {
