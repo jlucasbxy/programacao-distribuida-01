@@ -35,7 +35,7 @@ public class Worker {
     }
 
     public void start() throws InterruptedException {
-        ExecutorService pool = Executors.newFixedThreadPool(config.capacity());
+        ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor();
 
         for (int i = 0; i < config.capacity(); i++) {
             final String threadId = config.workerId() + "-" + i;
