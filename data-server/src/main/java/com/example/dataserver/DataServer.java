@@ -19,7 +19,7 @@ public class DataServer {
     private static final Pattern GET_PATTERN = Pattern.compile("^GET\\s+/?([^\\s]+)");
 
     private final DataServerConfig config;
-    private final Map<String, InternetMockJsonLoader.InternetPageData> internetMock;
+    private final Map<String, InternetPageData> internetMock;
 
     public DataServer(DataServerConfig config) {
         this.config = config;
@@ -89,7 +89,7 @@ public class DataServer {
                 return;
             }
 
-            InternetMockJsonLoader.InternetPageData page = internetMock.get(url);
+            InternetPageData page = internetMock.get(url);
             if (page == null) {
                 writer.println("ERROR: URL_NOT_FOUND");
                 return;

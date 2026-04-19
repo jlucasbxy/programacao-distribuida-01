@@ -46,9 +46,6 @@ final class InternetMockJsonLoader {
         return Map.copyOf(internetMock);
     }
 
-    record InternetPageData(String name, String content, List<String> links) {
-    }
-
     private record InternetPage(String url, String name, String content, List<String> links) {
     }
 }
