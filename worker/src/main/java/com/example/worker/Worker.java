@@ -52,14 +52,7 @@ public class Worker {
             }
             System.out.println("[" + threadId + "] " + registered);
 
-            Thread pingThread = Thread.ofVirtual().name("ping-" + threadId).start(() -> {
-                try {
-                    while (!socket.isClosed()) {
-                        Thread.sleep(PING_INTERVAL_MS);
-                        if (!socket.isClosed()) writer.println("PING");
-                    }
-                } catch (InterruptedException ignored) {}
-            });
+            Thread pingThread = startPingThread(threadId, socket, writer);
 
             boolean running = true;
             while (running) {
@@ -85,6 +78,17 @@ public class Worker {
         } catch (IOException e) {
             System.err.println("[" + threadId + "] Error: " + e.getMessage());
         }
+    }
+
+    private Thread startPingThread(String threadId, Socket socket, PrintWriter writer) {
+        return Thread.ofVirtual().name("ping-" + threadId).start(() -> {
+            try {
+                while (!socket.isClosed()) {
+                    Thread.sleep(PING_INTERVAL_MS);
+                    if (!socket.isClosed()) writer.println("PING");
+                }
+            } catch (InterruptedException ignored) {}
+        });
     }
 
     private String readSkipPing(BufferedReader reader) throws IOException {
