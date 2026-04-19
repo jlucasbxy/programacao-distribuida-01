@@ -157,12 +157,6 @@ public class Coordinator {
                 crawlState.evaluateCompletion();
                 yield new HandleResult("ACK DONE", true);
             }
-            case IDLE -> {
-                worker.markIdle();
-                crawlState.evaluateCompletion();
-                yield new HandleResult("ACK IDLE", true);
-            }
-            case HEARTBEAT -> new HandleResult("PONG", false);
             case QUIT -> new HandleResult("BYE", false);
             case UNKNOWN -> new HandleResult("ERROR UNKNOWN_COMMAND", false);
         };
