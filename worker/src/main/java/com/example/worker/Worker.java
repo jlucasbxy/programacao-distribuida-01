@@ -9,26 +9,15 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class Worker {
     private static final int PING_INTERVAL_MS      = 5_000;
     private static final int COORDINATOR_TIMEOUT_MS = 15_000;
-    private static final Map<String, Predicate<String>> CATEGORIES = new LinkedHashMap<>();
-
-    static {
-        CATEGORIES.put("esporte",   c -> c != null && (c.contains("futebol") || c.contains("basquete") || c.contains("esporte") || c.contains("placar")));
-        CATEGORIES.put("noticias",  c -> c != null && (c.contains("notícia") || c.contains("noticia") || c.contains("manchete") || c.contains("jornal")));
-        CATEGORIES.put("clima",     c -> c != null && (c.contains("clima") || c.contains("temperatura") || c.contains("chuva") || c.contains("tempo")));
-        CATEGORIES.put("tecnologia",c -> c != null && (c.contains("tech") || c.contains("software") || c.contains("programação") || c.contains("computador")));
-    }
 
     private final WorkerConfig config;
 
@@ -121,7 +110,7 @@ public class Worker {
                 .collect(Collectors.toList());
 
         // Content categorization via functional Predicate map
-        String category = CATEGORIES.entrySet().stream()
+        String category = config.categories().entrySet().stream()
                 .filter(e -> e.getValue().test(page.content()))
                 .map(Map.Entry::getKey)
                 .findFirst()

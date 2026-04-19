@@ -1,6 +1,9 @@
 package com.example.worker;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Predicate;
 
 public record WorkerConfig(
         String coordinatorHost,
@@ -36,5 +39,14 @@ public record WorkerConfig(
         }
 
         return new WorkerConfig(coordinatorHost, coordinatorPort, dataServerHost, dataServerPort, capacity, workerId);
+    }
+
+    public Map<String, Predicate<String>> categories() {
+        Map<String, Predicate<String>> categories = new LinkedHashMap<>();
+        categories.put("esporte",    c -> c != null && (c.contains("futebol") || c.contains("basquete") || c.contains("esporte") || c.contains("placar")));
+        categories.put("noticias",   c -> c != null && (c.contains("notícia") || c.contains("noticia") || c.contains("manchete") || c.contains("jornal")));
+        categories.put("clima",      c -> c != null && (c.contains("clima") || c.contains("temperatura") || c.contains("chuva") || c.contains("tempo")));
+        categories.put("tecnologia", c -> c != null && (c.contains("tech") || c.contains("software") || c.contains("programação") || c.contains("computador")));
+        return categories;
     }
 }
