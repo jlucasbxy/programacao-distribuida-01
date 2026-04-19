@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 public class Worker {
@@ -21,6 +22,8 @@ public class Worker {
     private static final int COORDINATOR_TIMEOUT_MS = 15_000;
 
     private final WorkerConfig config;
+    private final AtomicBoolean registeredLogged = new AtomicBoolean(false);
+    private final AtomicBoolean disconnectLogged = new AtomicBoolean(false);
 
     public Worker(WorkerConfig config) {
         this.config = config;
@@ -38,6 +41,7 @@ public class Worker {
     }
 
     private void runWorkerThread(String threadId) {
+        String logPrefix = "[" + config.workerId() + "] ";
         try (Socket socket = new Socket(config.coordinatorHost(), config.coordinatorPort());
              PrintWriter writer = new PrintWriter(socket.getOutputStream(), true, StandardCharsets.UTF_8);
              BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8))) {
@@ -46,10 +50,12 @@ public class Worker {
             writer.println("REGISTER " + threadId + " 1 " + config.workerId() + " " + config.capacity());
             String registered = reader.readLine();
             if (registered == null || !registered.startsWith("REGISTERED")) {
-                System.err.println("[" + threadId + "] Registration failed: " + registered);
+                System.err.println(logPrefix + "Registration failed: " + registered);
                 return;
             }
-            System.out.println("[" + threadId + "] " + registered);
+            if (registeredLogged.compareAndSet(false, true)) {
+                System.out.println(logPrefix + "REGISTERED (capacity=" + config.capacity() + ")");
+            }
 
             Thread pingThread = startPingThread(threadId, socket, writer);
 
@@ -60,22 +66,24 @@ public class Worker {
 
                 if (response.startsWith("TASK ")) {
                     String url = response.substring(5).trim();
-                    processTask(threadId, url, writer, reader);
+                    processTask(logPrefix, url, writer, reader);
                 } else if ("STOP".equals(response)) {
                     writer.println("QUIT");
                     readSkipPing(reader);
                     running = false;
                 } else if (!"PING".equals(response)) {
-                    System.err.println("[" + threadId + "] Unexpected response: " + response);
+                    System.err.println(logPrefix + "Unexpected response: " + response);
                 }
             }
 
             pingThread.interrupt();
-            System.out.println("[" + threadId + "] Crawl complete. Disconnecting.");
+            if (disconnectLogged.compareAndSet(false, true)) {
+                System.out.println(logPrefix + "Crawl complete. Disconnecting.");
+            }
         } catch (java.net.SocketTimeoutException e) {
-            System.err.println("[" + threadId + "] Coordinator timed out (no heartbeat).");
+            System.err.println(logPrefix + "Coordinator timed out (no heartbeat).");
         } catch (IOException e) {
-            System.err.println("[" + threadId + "] Error: " + e.getMessage());
+            System.err.println(logPrefix + "Error: " + e.getMessage());
         }
     }
 
@@ -96,12 +104,12 @@ public class Worker {
         return line;
     }
 
-    private void processTask(String threadId, String url, PrintWriter writer, BufferedReader reader) throws IOException {
+    private void processTask(String logPrefix, String url, PrintWriter writer, BufferedReader reader) throws IOException {
         DataServerClient client = new DataServerClient(config.dataServerHost(), config.dataServerPort());
         DataServerResponse page = client.getPage(url);
 
         if (page.isError()) {
-            System.err.println("[" + threadId + "] Error fetching " + url + ": " + page.error());
+            System.err.println(logPrefix + "Error fetching " + url + ": " + page.error());
             writer.println("DONE");
             readSkipPing(reader);
             return;
@@ -120,7 +128,7 @@ public class Worker {
                 .findFirst()
                 .orElse("geral");
 
-        System.out.println("[" + threadId + "] crawled=" + url
+        System.out.println(logPrefix + "crawled=" + url
                 + " category=" + category
                 + " links=" + links.size());
 
