@@ -39,10 +39,6 @@ final class WorkerState {
         this.idle = false;
     }
 
-    synchronized boolean hasAssignedTask() {
-        return this.currentTask != null;
-    }
-
     synchronized String completeTask() {
         String done = this.currentTask;
         this.currentTask = null;
@@ -55,10 +51,6 @@ final class WorkerState {
         this.currentTask = null;
         this.idle = true;
         return task;
-    }
-
-    synchronized void markIdle() {
-        this.idle = true;
     }
 
     synchronized boolean isIdle() {
