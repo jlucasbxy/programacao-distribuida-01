@@ -19,6 +19,16 @@ public record WorkerConfig(
     private static final int DEFAULT_DATA_SERVER_PORT = 9090;
     private static final int DEFAULT_CAPACITY = 1;
 
+    private static final Map<String, Predicate<String>> CATEGORIES;
+
+    static {
+        CATEGORIES = new LinkedHashMap<>();
+        CATEGORIES.put("esporte",    c -> c != null && (c.contains("futebol") || c.contains("basquete") || c.contains("esporte") || c.contains("placar")));
+        CATEGORIES.put("noticias",   c -> c != null && (c.contains("notícia") || c.contains("noticia") || c.contains("manchete") || c.contains("jornal")));
+        CATEGORIES.put("clima",      c -> c != null && (c.contains("clima") || c.contains("temperatura") || c.contains("chuva") || c.contains("tempo")));
+        CATEGORIES.put("tecnologia", c -> c != null && (c.contains("tech") || c.contains("software") || c.contains("programação") || c.contains("computador")));
+    }
+
     public static WorkerConfig fromArgs(String[] args) {
         String coordinatorHost = DEFAULT_COORDINATOR_HOST;
         int coordinatorPort = DEFAULT_COORDINATOR_PORT;
@@ -42,11 +52,6 @@ public record WorkerConfig(
     }
 
     public Map<String, Predicate<String>> categories() {
-        Map<String, Predicate<String>> categories = new LinkedHashMap<>();
-        categories.put("esporte",    c -> c != null && (c.contains("futebol") || c.contains("basquete") || c.contains("esporte") || c.contains("placar")));
-        categories.put("noticias",   c -> c != null && (c.contains("notícia") || c.contains("noticia") || c.contains("manchete") || c.contains("jornal")));
-        categories.put("clima",      c -> c != null && (c.contains("clima") || c.contains("temperatura") || c.contains("chuva") || c.contains("tempo")));
-        categories.put("tecnologia", c -> c != null && (c.contains("tech") || c.contains("software") || c.contains("programação") || c.contains("computador")));
-        return categories;
+        return CATEGORIES;
     }
 }
