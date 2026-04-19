@@ -11,17 +11,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class DataServerClient {
-    private static final String DEFAULT_HOST = "localhost";
-    private static final int DEFAULT_PORT = 9090;
     private static final int DEFAULT_TIMEOUT_MS = 5_000;
 
     private final String host;
     private final int port;
     private final int timeoutMs;
-
-    public DataServerClient() {
-        this(DEFAULT_HOST, DEFAULT_PORT);
-    }
 
     public DataServerClient(String host, int port) {
         this(host, port, DEFAULT_TIMEOUT_MS);
@@ -44,13 +38,7 @@ public class DataServerClient {
     }
 
     public DataServerResponse getPage(String url) throws IOException {
-        return sendRaw(DataServerRequestFormatter.formatGetRequest(url));
-    }
-
-    public DataServerResponse sendRaw(String requestLine) throws IOException {
-        if (requestLine == null) {
-            throw new IllegalArgumentException("requestLine must not be null");
-        }
+        String requestLine = DataServerRequestFormatter.formatGetRequest(url);
 
         List<String> responseLines = new ArrayList<>();
 
