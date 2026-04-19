@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -31,6 +32,7 @@ public class Coordinator {
     private final ArrayDeque<WorkerState> idleWorkers = new ArrayDeque<>();
 
     private volatile ServerSocket serverSocket;
+    private volatile ExecutorService workerConnections;
 
     public Coordinator(CoordinatorConfig config) {
         this.config = config;
@@ -44,7 +46,7 @@ public class Coordinator {
     }
 
     public void start() throws IOException {
-        ExecutorService workerConnections = Executors.newVirtualThreadPerTaskExecutor();
+        this.workerConnections = Executors.newVirtualThreadPerTaskExecutor();
         Thread pingBroadcaster = startPingBroadcaster();
 
         try (ServerSocket server = new ServerSocket(config.port())) {
@@ -87,10 +89,23 @@ public class Coordinator {
             try {
                 while (running.get()) {
                     Thread.sleep(PING_INTERVAL_MS);
-                    for (WorkerState w : workers.values()) w.sendLine("PING");
+                    broadcastParallel("PING");
                 }
             } catch (InterruptedException ignored) {}
         });
+    }
+
+    private void broadcastParallel(String message) {
+        ExecutorService executor = this.workerConnections;
+        if (executor == null || workers.isEmpty()) return;
+        CompletableFuture<?>[] sends = workers.values().stream()
+                .map(w -> CompletableFuture.runAsync(() -> {
+                    try {
+                        w.sendLine(message);
+                    } catch (Exception ignored) {}
+                }, executor))
+                .toArray(CompletableFuture[]::new);
+        CompletableFuture.allOf(sends).join();
     }
 
     private void handleWorkerConnection(Socket socket) {
@@ -220,12 +235,7 @@ public class Coordinator {
     }
 
     private void broadcastStop() {
-        for (WorkerState w : workers.values()) {
-            try {
-                w.sendLine("STOP");
-            } catch (Exception ignored) {
-            }
-        }
+        broadcastParallel("STOP");
     }
 
     private void requestShutdown() {

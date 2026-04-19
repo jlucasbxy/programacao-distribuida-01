@@ -1,7 +1,7 @@
 package com.example.worker;
 
 public class Main {
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) {
         WorkerConfig config = WorkerConfig.fromArgs(args);
         System.out.println("Starting worker " + config.workerId()
                 + " (capacity=" + config.capacity() + ")"

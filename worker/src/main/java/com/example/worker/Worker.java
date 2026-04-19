@@ -11,9 +11,9 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class Worker {
@@ -26,16 +26,15 @@ public class Worker {
         this.config = config;
     }
 
-    public void start() throws InterruptedException {
-        ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor();
-
-        for (int i = 0; i < config.capacity(); i++) {
-            final String threadId = config.workerId() + "-" + i;
-            pool.submit(() -> runWorkerThread(threadId));
+    public void start() {
+        try (ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor()) {
+            CompletableFuture<?>[] threads = new CompletableFuture[config.capacity()];
+            for (int i = 0; i < config.capacity(); i++) {
+                final String threadId = config.workerId() + "-" + i;
+                threads[i] = CompletableFuture.runAsync(() -> runWorkerThread(threadId), pool);
+            }
+            CompletableFuture.allOf(threads).join();
         }
-
-        pool.shutdown();
-        pool.awaitTermination(1, TimeUnit.HOURS);
     }
 
     private void runWorkerThread(String threadId) {
