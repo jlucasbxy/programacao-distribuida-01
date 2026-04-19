@@ -45,14 +45,7 @@ public class Coordinator {
 
     public void start() throws IOException {
         ExecutorService workerConnections = Executors.newVirtualThreadPerTaskExecutor();
-        Thread pingBroadcaster = Thread.ofVirtual().name("ping-broadcaster").start(() -> {
-            try {
-                while (running.get()) {
-                    Thread.sleep(PING_INTERVAL_MS);
-                    for (WorkerState w : workers.values()) w.sendLine("PING");
-                }
-            } catch (InterruptedException ignored) {}
-        });
+        Thread pingBroadcaster = startPingBroadcaster();
 
         try (ServerSocket server = new ServerSocket(config.port())) {
             this.serverSocket = server;
@@ -87,6 +80,17 @@ public class Coordinator {
                 Thread.currentThread().interrupt();
             }
         }
+    }
+
+    private Thread startPingBroadcaster() {
+        return Thread.ofVirtual().name("ping-broadcaster").start(() -> {
+            try {
+                while (running.get()) {
+                    Thread.sleep(PING_INTERVAL_MS);
+                    for (WorkerState w : workers.values()) w.sendLine("PING");
+                }
+            } catch (InterruptedException ignored) {}
+        });
     }
 
     private void handleWorkerConnection(Socket socket) {
