@@ -19,6 +19,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class Worker {
+    private static final int PING_INTERVAL_MS = 5_000;
     private static final Map<String, Predicate<String>> CATEGORIES = new LinkedHashMap<>();
 
     static {
@@ -59,6 +60,15 @@ public class Worker {
             }
             System.out.println("[" + threadId + "] " + registered);
 
+            Thread pingThread = Thread.ofVirtual().name("ping-" + threadId).start(() -> {
+                try {
+                    while (!socket.isClosed()) {
+                        Thread.sleep(PING_INTERVAL_MS);
+                        if (!socket.isClosed()) writer.println("PING");
+                    }
+                } catch (InterruptedException ignored) {}
+            });
+
             boolean running = true;
             while (running) {
                 String response = reader.readLine();
@@ -76,6 +86,7 @@ public class Worker {
                 }
             }
 
+            pingThread.interrupt();
             System.out.println("[" + threadId + "] Crawl complete. Disconnecting.");
         } catch (IOException e) {
             System.err.println("[" + threadId + "] Error: " + e.getMessage());

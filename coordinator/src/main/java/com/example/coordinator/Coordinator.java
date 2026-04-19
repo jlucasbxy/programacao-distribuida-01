@@ -7,6 +7,7 @@ import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.LinkedHashMap;
@@ -22,6 +23,8 @@ public class Coordinator {
     private final ConcurrentHashMap<String, WorkerState> workers;
     private final CrawlState crawlState;
     private final AtomicBoolean running;
+
+    private static final int WORKER_TIMEOUT_MS = 15_000;
 
     private final Object dispatchLock = new Object();
     private final ArrayDeque<WorkerState> idleWorkers = new ArrayDeque<>();
@@ -79,6 +82,7 @@ public class Coordinator {
         try (Socket workerSocket = socket;
              BufferedReader reader = new BufferedReader(new InputStreamReader(workerSocket.getInputStream(), StandardCharsets.UTF_8));
              PrintWriter writer = new PrintWriter(workerSocket.getOutputStream(), true, StandardCharsets.UTF_8)) {
+            workerSocket.setSoTimeout(WORKER_TIMEOUT_MS);
             String registrationLine = reader.readLine();
             if (registrationLine == null) {
                 return;
@@ -98,6 +102,8 @@ public class Coordinator {
             while ((line = reader.readLine()) != null) {
                 if (!handleMessage(worker, writer, line)) break;
             }
+        } catch (SocketTimeoutException e) {
+            System.err.println("Worker timed out (no heartbeat): " + (worker != null ? worker.id() : "unknown"));
         } catch (IOException e) {
             if (running.get()) {
                 System.err.println("Worker connection error: " + e.getMessage());
@@ -154,6 +160,7 @@ public class Coordinator {
                 writer.println("BYE");
                 return false;
             }
+            case PING -> { /* liveness heartbeat, no response needed */ }
             case UNKNOWN -> writer.println("ERROR UNKNOWN_COMMAND");
         }
         return true;

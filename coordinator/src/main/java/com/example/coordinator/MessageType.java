@@ -1,17 +1,19 @@
 package com.example.coordinator;
 
 enum MessageType {
-    FOUND, DONE, QUIT, UNKNOWN;
+    FOUND, DONE, QUIT, PING, UNKNOWN;
 
     private static final String MSG_FOUND    = "FOUND:";
     private static final String MSG_DONE     = "DONE";
     private static final String MSG_QUIT     = "QUIT";
+    private static final String MSG_PING     = "PING";
 
     static MessageType parse(String line) {
         String message = line == null ? "" : line.trim();
         if (message.startsWith(MSG_FOUND))       return FOUND;
         if (message.startsWith(MSG_DONE))        return DONE;
         if (message.equals(MSG_QUIT))            return QUIT;
+        if (message.equals(MSG_PING))            return PING;
         return UNKNOWN;
     }
 }
