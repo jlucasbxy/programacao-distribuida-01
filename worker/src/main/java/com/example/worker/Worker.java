@@ -4,6 +4,8 @@ import com.example.common.dataserver.DataServerClient;
 import com.example.common.dataserver.DataServerResponse;
 
 import java.io.BufferedReader;
+import java.io.FileDescriptor;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
@@ -23,6 +25,8 @@ public class Worker {
 
     private final WorkerConfig config;
     private final Object writerLock = new Object();
+    private static final Object stdoutLock = new Object();
+    private static final FileOutputStream stdout = new FileOutputStream(FileDescriptor.out);
 
     public Worker(WorkerConfig config) {
         this.config = config;
@@ -43,7 +47,7 @@ public class Worker {
                 System.err.println(logPrefix + "Registration failed: " + registered);
                 return;
             }
-            System.out.println(logPrefix + "REGISTERED (capacity=" + config.capacity() + ")");
+            logInfo(logPrefix + "REGISTERED (capacity=" + config.capacity() + ")");
 
             Thread pingThread = startPingThread(socket, writer);
 
@@ -53,7 +57,7 @@ public class Worker {
                 pingThread.interrupt();
             }
 
-            System.out.println(logPrefix + "Crawl complete. Disconnecting.");
+            logInfo(logPrefix + "Crawl complete. Disconnecting.");
         } catch (SocketTimeoutException e) {
             System.err.println(logPrefix + "Coordinator timed out (no heartbeat).");
         } catch (IOException e) {
@@ -135,7 +139,7 @@ public class Worker {
                     .findFirst()
                     .orElse("geral");
 
-            System.out.println(logPrefix + "crawled=" + url
+            logInfo(logPrefix + "crawled=" + url
                     + " category=" + category
                     + " links=" + links.size());
 
@@ -154,6 +158,18 @@ public class Worker {
     private void sendLine(PrintWriter writer, String line) {
         synchronized (writerLock) {
             writer.println(line);
+        }
+    }
+
+    private void logInfo(String message) {
+        byte[] line = (message + System.lineSeparator()).getBytes(StandardCharsets.UTF_8);
+        synchronized (stdoutLock) {
+            try {
+                stdout.write(line);
+                stdout.flush();
+            } catch (IOException e) {
+                System.out.println(message);
+            }
         }
     }
 }
