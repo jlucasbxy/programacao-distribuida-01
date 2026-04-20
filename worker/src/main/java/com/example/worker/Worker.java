@@ -40,13 +40,9 @@ public class Worker {
              BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8))) {
             socket.setSoTimeout(COORDINATOR_TIMEOUT_MS);
 
-            sendLine(writer, "REGISTER " + config.workerId() + " " + config.capacity());
-            String registered = reader.readLine();
-            if (registered == null || !registered.startsWith("REGISTERED")) {
-                logger.error("Registration failed: " + registered);
+            if (!register(reader, writer)) {
                 return;
             }
-            logger.info("REGISTERED (capacity=" + config.capacity() + ")");
 
             Thread pingThread = startPingThread(socket, writer);
 
@@ -64,6 +60,17 @@ public class Worker {
         } finally {
             shutdownPool(taskPool);
         }
+    }
+
+    private boolean register(BufferedReader reader, PrintWriter writer) throws IOException {
+        sendLine(writer, "REGISTER " + config.workerId() + " " + config.capacity());
+        String registered = reader.readLine();
+        if (registered == null || !registered.startsWith("REGISTERED")) {
+            logger.error("Registration failed: " + registered);
+            return false;
+        }
+        logger.info("REGISTERED (capacity=" + config.capacity() + ")");
+        return true;
     }
 
     private void runReaderLoop(BufferedReader reader, PrintWriter writer, ExecutorService taskPool) throws IOException {
