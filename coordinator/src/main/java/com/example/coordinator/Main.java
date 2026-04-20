@@ -1,12 +1,17 @@
 package com.example.coordinator;
 
+import com.example.common.logging.AppLogger;
+import com.example.common.logging.Loggers;
+
 import java.io.IOException;
 import java.util.Arrays;
 
 public class Main {
+    private static final AppLogger LOGGER = Loggers.consoleWithPrefix("[coordinator] ");
+
     public static void main(String[] args) throws IOException {
         if (args.length == 0) {
-            System.err.println("Usage: Main --coordinator [port] [--seeds-file <path>] [--seeds-count <n>]");
+            LOGGER.error("Usage: Main --coordinator [port] [--seeds-file <path>] [--seeds-count <n>]");
             System.exit(1);
         }
 
@@ -16,8 +21,8 @@ public class Main {
         switch (mode) {
             case "--coordinator" -> new Coordinator(CoordinatorConfig.fromArgs(rest)).start();
             default -> {
-                System.err.println("Unknown mode: " + mode);
-                System.err.println("Use --coordinator.");
+                LOGGER.error("Unknown mode: " + mode);
+                LOGGER.error("Use --coordinator.");
                 System.exit(1);
             }
         }

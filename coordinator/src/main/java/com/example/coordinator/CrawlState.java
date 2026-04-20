@@ -1,5 +1,7 @@
 package com.example.coordinator;
 
+import com.example.common.logging.AppLogger;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -12,16 +14,18 @@ public class CrawlState {
     private final BlockingQueue<String> frontierQueue;
     private final Set<String> visitedUrls;
     private final ConcurrentHashMap<String, WorkerState> workers;
+    private final AppLogger logger;
     private int tasksInFlight;
     private final AtomicBoolean completionReached;
     private final AtomicBoolean hadAnyWorker;
 
     private volatile Runnable onCompletion;
 
-    public CrawlState(ConcurrentHashMap<String, WorkerState> workers) {
+    public CrawlState(ConcurrentHashMap<String, WorkerState> workers, AppLogger logger) {
         this.frontierQueue = new LinkedBlockingQueue<>();
         this.visitedUrls = ConcurrentHashMap.newKeySet();
         this.workers = workers;
+        this.logger = logger;
         this.tasksInFlight = 0;
         this.completionReached = new AtomicBoolean(false);
         this.hadAnyWorker = new AtomicBoolean(false);
@@ -124,7 +128,7 @@ public class CrawlState {
 
         boolean allIdle = workers.values().stream().allMatch(WorkerState::isIdle);
         if (allIdle && completionReached.compareAndSet(false, true)) {
-            System.out.println("Coordinator completed crawl: frontier empty, workers idle, no tasks in flight.");
+            logger.info("Coordinator completed crawl: frontier empty, workers idle, no tasks in flight.");
             if (onCompletion != null) onCompletion.run();
         }
     }

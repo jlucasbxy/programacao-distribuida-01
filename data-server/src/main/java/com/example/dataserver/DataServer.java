@@ -1,5 +1,8 @@
 package com.example.dataserver;
 
+import com.example.common.logging.AppLogger;
+import com.example.common.logging.Loggers;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -20,9 +23,11 @@ public class DataServer {
 
     private final DataServerConfig config;
     private final Map<String, InternetPageData> internetMock;
+    private final AppLogger logger;
 
     public DataServer(DataServerConfig config) {
         this.config = config;
+        this.logger = Loggers.consoleWithPrefix("[data-server] ");
         this.internetMock = InternetMockJsonLoader.load(config.dataFilePath());
     }
 
@@ -30,7 +35,7 @@ public class DataServer {
         try (ServerSocket serverSocket = new ServerSocket(config.port())) {
             start(serverSocket);
         } catch (IOException e) {
-            System.err.println("Server failed to start: " + e.getMessage());
+            logger.error("Server failed to start: " + e.getMessage());
         }
     }
 
@@ -47,7 +52,7 @@ public class DataServer {
             workers.shutdown();
         }));
 
-        System.out.println("Data server listening on port " + serverSocket.getLocalPort() + " with " + internetMock.size() + " pages loaded.");
+        logger.info("Data server listening on port " + serverSocket.getLocalPort() + " with " + internetMock.size() + " pages loaded.");
 
         try {
             while (running.get()) {
@@ -56,7 +61,7 @@ public class DataServer {
                     workers.submit(() -> handleWorkerRequest(workerSocket));
                 } catch (IOException e) {
                     if (running.get()) {
-                        System.err.println("Error accepting connection: " + e.getMessage());
+                        logger.error("Error accepting connection: " + e.getMessage());
                     }
                 }
             }
@@ -99,7 +104,7 @@ public class DataServer {
             writer.println("LINKS: " + String.join(", ", page.links()));
             writer.println("CONTENT: " + page.content().replace("\r", " ").replace("\n", " "));
         } catch (IOException e) {
-            System.err.println("Worker request failed: " + e.getMessage());
+            logger.error("Worker request failed: " + e.getMessage());
         }
     }
 

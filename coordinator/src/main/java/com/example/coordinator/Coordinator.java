@@ -1,5 +1,8 @@
 package com.example.coordinator;
 
+import com.example.common.logging.AppLogger;
+import com.example.common.logging.Loggers;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -21,6 +24,7 @@ public class Coordinator {
     private final ConcurrentHashMap<String, WorkerState> workers;
     private final CrawlState crawlState;
     private final AtomicBoolean running;
+    private final AppLogger logger;
 
     private static final int WORKER_TIMEOUT_MS  = 15_000;
     private static final int PING_INTERVAL_MS   = 5_000;
@@ -30,13 +34,14 @@ public class Coordinator {
 
     public Coordinator(CoordinatorConfig config) {
         this.config = config;
+        this.logger = Loggers.consoleWithPrefix("[coordinator] ");
         this.workers = new ConcurrentHashMap<>();
-        this.crawlState = new CrawlState(workers);
+        this.crawlState = new CrawlState(workers, logger);
         this.running = new AtomicBoolean(true);
 
         crawlState.setOnCompletion(this::onCrawlComplete);
 
-        crawlState.enqueueAllIfNew(SeedsLoader.load(config.seedsFile(), config.seedsCount()));
+        crawlState.enqueueAllIfNew(SeedsLoader.load(config.seedsFile(), config.seedsCount(), logger));
     }
 
     public void start() throws IOException {
@@ -50,7 +55,7 @@ public class Coordinator {
                 requestShutdown();
             }));
 
-            System.out.println("Coordinator listening on port " + config.port()
+            logger.info("Coordinator listening on port " + config.port()
                     + " with " + crawlState.frontierSize() + " initial seed(s).");
 
             while (running.get()) {
@@ -59,7 +64,7 @@ public class Coordinator {
                     workerConnections.submit(() -> handleWorkerConnection(socket));
                 } catch (SocketException e) {
                     if (running.get()) {
-                        System.err.println("Error accepting connection: " + e.getMessage());
+                        logger.error("Error accepting connection: " + e.getMessage());
                     }
                 }
             }
@@ -128,10 +133,10 @@ public class Coordinator {
                 if (!handleMessage(worker, writer, line)) break;
             }
         } catch (SocketTimeoutException e) {
-            System.err.println("Worker timed out (no heartbeat): " + (worker != null ? worker.id() : "unknown"));
+            logger.error("Worker timed out (no heartbeat): " + (worker != null ? worker.id() : "unknown"));
         } catch (IOException e) {
             if (running.get()) {
-                System.err.println("Worker connection error: " + e.getMessage());
+                logger.error("Worker connection error: " + e.getMessage());
             }
         } finally {
             if (worker != null) {
@@ -150,7 +155,7 @@ public class Coordinator {
         worker.attachWriter(writer);
         workers.put(worker.id(), worker);
         crawlState.markWorkerRegistered();
-        System.out.println("Worker connected: " + req.workerId() + " (capacity=" + req.capacity() + ")");
+        logger.info("Worker connected: " + req.workerId() + " (capacity=" + req.capacity() + ")");
         return worker;
     }
 

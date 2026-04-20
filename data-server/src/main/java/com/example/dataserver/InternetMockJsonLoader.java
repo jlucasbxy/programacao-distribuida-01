@@ -1,5 +1,8 @@
 package com.example.dataserver;
 
+import com.example.common.logging.AppLogger;
+import com.example.common.logging.Loggers;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -11,13 +14,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 final class InternetMockJsonLoader {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final AppLogger LOGGER = Loggers.consoleWithPrefix("[data-server] ");
 
     private InternetMockJsonLoader() {
     }
 
     static Map<String, InternetPageData> load(String dataFilePath) {
         if (dataFilePath == null || dataFilePath.isBlank()) {
-            System.err.println("Missing internet mock json path. Pass it as the second argument. Starting with empty data.");
+            LOGGER.error("Missing internet mock json path. Pass it as the second argument. Starting with empty data.");
             return Map.of();
         }
 
@@ -26,7 +30,7 @@ final class InternetMockJsonLoader {
             loadedPages = OBJECT_MAPPER.readValue(Path.of(dataFilePath).toFile(), new TypeReference<List<InternetPage>>() {
             });
         } catch (IOException e) {
-            System.err.println("Failed to load internet mock data: " + e.getMessage() + ". Starting with empty data.");
+            LOGGER.error("Failed to load internet mock data: " + e.getMessage() + ". Starting with empty data.");
             return Map.of();
         }
 

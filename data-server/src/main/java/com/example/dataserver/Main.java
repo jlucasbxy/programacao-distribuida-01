@@ -1,12 +1,17 @@
 package com.example.dataserver;
 
+import com.example.common.logging.AppLogger;
+import com.example.common.logging.Loggers;
+
 import java.io.IOException;
 import java.util.Arrays;
 
 public class Main {
+    private static final AppLogger LOGGER = Loggers.consoleWithPrefix("[data-server] ");
+
     public static void main(String[] args) throws IOException {
         if (args.length == 0) {
-            System.err.println("Usage: Main --server [port] [dataFilePath]");
+            LOGGER.error("Usage: Main --server [port] [dataFilePath]");
             System.exit(1);
         }
 
@@ -16,8 +21,8 @@ public class Main {
         switch (mode) {
             case "--server" -> new DataServer(DataServerConfig.fromArgs(rest)).start();
             default -> {
-                System.err.println("Unknown mode: " + mode);
-                System.err.println("Use --server.");
+                LOGGER.error("Unknown mode: " + mode);
+                LOGGER.error("Use --server.");
                 System.exit(1);
             }
         }

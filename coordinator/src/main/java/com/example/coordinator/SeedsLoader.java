@@ -1,5 +1,7 @@
 package com.example.coordinator;
 
+import com.example.common.logging.AppLogger;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -8,7 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 class SeedsLoader {
-    static List<String> load(String path, int limit) {
+    static List<String> load(String path, int limit, AppLogger logger) {
         try (BufferedReader reader = Files.newBufferedReader(Paths.get(path))) {
             List<String> seeds = new ArrayList<>();
             String line;
@@ -21,7 +23,7 @@ class SeedsLoader {
             }
             return List.copyOf(seeds);
         } catch (IOException e) {
-            System.err.println("Could not read seeds file: " + path + " — " + e.getMessage());
+            logger.error("Could not read seeds file: " + path + " - " + e.getMessage());
             return List.of();
         }
     }
