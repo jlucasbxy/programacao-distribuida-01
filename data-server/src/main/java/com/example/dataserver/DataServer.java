@@ -15,12 +15,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class DataServer {
-    private static final Pattern GET_PATTERN = Pattern.compile("^GET\\s+/?([^\\s]+)");
-
     private final DataServerConfig config;
     private final Map<String, InternetPageData> internetMock;
     private final AppLogger logger;
@@ -83,42 +79,11 @@ public class DataServer {
              BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
              PrintWriter writer = new PrintWriter(socket.getOutputStream(), true, StandardCharsets.UTF_8)) {
             String requestLine = reader.readLine();
-            if (requestLine == null || requestLine.isBlank()) {
-                writer.println("ERROR: EMPTY_REQUEST");
-                return;
-            }
-
-            String url = resolveRequestedUrl(requestLine);
-            if (url == null) {
-                writer.println("ERROR: INVALID_REQUEST");
-                return;
-            }
-
-            InternetPageData page = internetMock.get(url);
-            if (page == null) {
-                writer.println("ERROR: URL_NOT_FOUND");
-                return;
-            }
-
-            writer.println("NAME: " + page.name());
-            writer.println("LINKS: " + String.join(", ", page.links()));
-            writer.println("CONTENT: " + page.content().replace("\r", " ").replace("\n", " "));
+            String response = RequestHandler.formatResponse(internetMock, requestLine);
+            writer.print(response);
+            writer.flush();
         } catch (IOException e) {
             logger.error("Worker request failed: " + e.getMessage());
         }
-    }
-
-    private static String resolveRequestedUrl(String requestLine) {
-        String trimmedRequest = requestLine.trim();
-        Matcher matcher = GET_PATTERN.matcher(trimmedRequest);
-        if (matcher.find()) {
-            return matcher.group(1);
-        }
-
-        if (trimmedRequest.isBlank()) {
-            return null;
-        }
-
-        return trimmedRequest.startsWith("/") ? trimmedRequest.substring(1) : trimmedRequest;
     }
 }
