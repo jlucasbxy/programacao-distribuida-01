@@ -10,7 +10,7 @@ final class RequestHandler {
     private RequestHandler() {
     }
 
-    static String formatResponse(Map<String, InternetPageData> mock, String requestLine) {
+    static String formatResponse(Map<String, String> mock, String requestLine) {
         if (requestLine == null || requestLine.isBlank()) {
             return "ERROR: EMPTY_REQUEST\n";
         }
@@ -18,13 +18,11 @@ final class RequestHandler {
         if (url == null) {
             return "ERROR: INVALID_REQUEST\n";
         }
-        InternetPageData page = mock.get(url);
-        if (page == null) {
+        String preformattedResponse = mock.get(url);
+        if (preformattedResponse == null) {
             return "ERROR: URL_NOT_FOUND\n";
         }
-        return "NAME: " + page.name() + "\n"
-                + "LINKS: " + String.join(", ", page.links()) + "\n"
-                + "CONTENT: " + page.content().replace("\r", " ").replace("\n", " ") + "\n";
+        return preformattedResponse;
     }
 
     private static String resolveRequestedUrl(String requestLine) {

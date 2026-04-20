@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class DataServer {
     private final DataServerConfig config;
-    private final Map<String, InternetPageData> internetMock;
+    private final Map<String, String> internetMock;
     private final AppLogger logger;
 
     public DataServer(DataServerConfig config) {
