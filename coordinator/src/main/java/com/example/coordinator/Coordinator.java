@@ -16,6 +16,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -46,12 +47,12 @@ public class Coordinator {
 
     public void start() throws IOException {
         this.workerConnections = Executors.newVirtualThreadPerTaskExecutor();
-        Thread pingBroadcaster = startPingBroadcaster();
+        Future<?> pingBroadcaster = startPingBroadcaster();
 
         try (ServerSocket server = new ServerSocket(config.port())) {
             this.serverSocket = server;
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                pingBroadcaster.interrupt();
+                pingBroadcaster.cancel(true);
                 requestShutdown();
             }));
 
@@ -69,7 +70,7 @@ public class Coordinator {
                 }
             }
         } finally {
-            pingBroadcaster.interrupt();
+            pingBroadcaster.cancel(true);
             requestShutdown();
             workerConnections.shutdown();
             try {
@@ -83,8 +84,12 @@ public class Coordinator {
         }
     }
 
-    private Thread startPingBroadcaster() {
-        return Thread.ofVirtual().name("ping-broadcaster").start(() -> {
+    private Future<?> startPingBroadcaster() {
+        ExecutorService executor = this.workerConnections;
+        if (executor == null) {
+            throw new IllegalStateException("Worker executor not initialized");
+        }
+        return executor.submit(() -> {
             try {
                 while (running.get()) {
                     Thread.sleep(PING_INTERVAL_MS);
