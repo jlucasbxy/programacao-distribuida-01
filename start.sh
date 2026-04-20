@@ -9,15 +9,17 @@ START_WORKERS=false
 NUM_WORKERS=1
 WORKER_CAPACITY=1
 SEEDS_COUNT=""
+CLEAN_BUILD=false
 
 usage() {
-    echo "Usage: $0 [--all] [--data-server] [--coordinator] [--workers [N]] [--capacity C] [--seeds-count N]"
+    echo "Usage: $0 [--all] [--data-server] [--coordinator] [--workers [N]] [--capacity C] [--seeds-count N] [--clean]"
     echo "  --all             Start all services (default if no flags given)"
     echo "  --data-server     Start only the data-server"
     echo "  --coordinator     Start only the coordinator"
     echo "  --workers [N]     Start N workers (default: 1)"
     echo "  --capacity C      Set capacity per worker (default: 1)"
     echo "  --seeds-count N   Limit coordinator to read only N seeds from the file"
+    echo "  --clean           Clean all Maven modules"
     exit 1
 }
 
@@ -70,12 +72,23 @@ else
                     usage
                 fi
                 ;;
+            --clean)
+                CLEAN_BUILD=true
+                shift
+                ;;
             *)
                 echo "Unknown flag: $1"
                 usage
                 ;;
         esac
     done
+fi
+
+if $CLEAN_BUILD && ! $START_DATA_SERVER && ! $START_COORDINATOR && ! $START_WORKERS; then
+    echo "Cleaning all modules..."
+    mvn -f "$ROOT/pom.xml" clean -q
+    echo "Clean complete."
+    exit 0
 fi
 
 PIDS=()
@@ -90,6 +103,9 @@ cleanup() {
 trap cleanup SIGINT SIGTERM
 
 echo "Building all modules..."
+if $CLEAN_BUILD; then
+    mvn -f "$ROOT/pom.xml" clean -q
+fi
 mvn -f "$ROOT/pom.xml" install -DskipTests -q
 
 if $START_DATA_SERVER; then
