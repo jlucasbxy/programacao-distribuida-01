@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 public class Worker {
@@ -44,12 +45,12 @@ public class Worker {
                 return;
             }
 
-            Thread pingThread = startPingThread(socket, writer);
+            Future<?> pingTask = startPingTask(taskPool, socket, writer);
 
             try {
-                runReaderLoop(reader, writer, taskPool);
+                runReaderLoop(reader, writer, taskPool, pingTask);
             } finally {
-                pingThread.interrupt();
+                pingTask.cancel(true);
             }
 
             logger.info("Crawl complete. Disconnecting.");
@@ -73,13 +74,19 @@ public class Worker {
         return true;
     }
 
-    private void runReaderLoop(BufferedReader reader, PrintWriter writer, ExecutorService taskPool) throws IOException {
+    private void runReaderLoop(
+            BufferedReader reader,
+            PrintWriter writer,
+            ExecutorService taskPool,
+            Future<?> pingTask
+    ) throws IOException {
         String line;
         while ((line = reader.readLine()) != null) {
             if (line.startsWith("TASK ")) {
                 String url = line.substring(5).trim();
                 taskPool.submit(() -> processTask(url, writer));
             } else if ("STOP".equals(line)) {
+                pingTask.cancel(true);
                 drainTasks(taskPool);
                 sendLine(writer, "QUIT");
                 return;
@@ -112,8 +119,8 @@ public class Worker {
         }
     }
 
-    private Thread startPingThread(Socket socket, PrintWriter writer) {
-        return Thread.ofVirtual().name("ping-" + config.workerId()).start(() -> {
+    private Future<?> startPingTask(ExecutorService taskPool, Socket socket, PrintWriter writer) {
+        return taskPool.submit(() -> {
             try {
                 while (!socket.isClosed()) {
                     Thread.sleep(PING_INTERVAL_MS);
