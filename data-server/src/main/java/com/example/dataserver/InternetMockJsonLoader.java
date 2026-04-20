@@ -53,7 +53,7 @@ final class InternetMockJsonLoader {
     private static String formatResponse(String name, List<String> links, String content) {
         return "NAME: " + name + "\n"
                 + "LINKS: " + String.join(",", links) + "\n"
-                + "CONTENT: " + content.replace("\r", " ").replace("\n", " ") + "\n";
+                + "CONTENT: " + content.replace("\r", "").replace("\n", "") + "\n";
     }
 
     private record InternetPage(String url, String name, String content, List<String> links) {
