@@ -142,9 +142,7 @@ public class Worker {
 
         String content = page.content();
 
-        // Temporarily disabled: links will be extracted from page.content() in a future iteration.
-        // List<String> links = extractDiscoveredLinks(content, url);
-        List<String> links = List.of();
+        List<String> links = LinkExtractor.extract(content, url);
 
         String category = config.categories().entrySet().stream()
                 .filter(e -> e.getValue().test(content))
@@ -154,7 +152,7 @@ public class Worker {
 
         logger.info("crawled=" + url
                 + " category=" + category
-                + " links=" + links.size());
+                + " foundLinks=" + links.size());
 
         synchronized (writerLock) {
             if (!links.isEmpty()) {
@@ -170,8 +168,4 @@ public class Worker {
         }
     }
 
-    private List<String> extractDiscoveredLinks(String pageContent, String sourceUrl) {
-        // Placeholder: links will be parsed from HTML/content in a later step.
-        return List.of();
-    }
 }
