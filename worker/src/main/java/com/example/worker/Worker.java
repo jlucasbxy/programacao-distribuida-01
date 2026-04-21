@@ -141,10 +141,9 @@ public class Worker {
                 return;
             }
 
-            List<String> links = page.links().stream()
-                    .filter(link -> link != null && !link.isBlank())
-                    .filter(link -> !link.equals(url))
-                    .toList();
+            // Temporarily disabled: links will be extracted from page.content() in a future iteration.
+            // List<String> links = extractDiscoveredLinks(page, url);
+            List<String> links = List.of();
 
             String category = config.categories().entrySet().stream()
                     .filter(e -> e.getValue().test(page.content()))
@@ -172,5 +171,12 @@ public class Worker {
         synchronized (writerLock) {
             writer.println(line);
         }
+    }
+
+    private List<String> extractDiscoveredLinks(DataServerResponse page, String sourceUrl) {
+        return page.links().stream()
+                .filter(link -> link != null && !link.isBlank())
+                .filter(link -> !link.equals(sourceUrl))
+                .toList();
     }
 }

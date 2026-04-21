@@ -40,20 +40,18 @@ final class InternetMockJsonLoader {
                 continue;
             }
 
-            List<String> links = pageData.links() == null ? List.of() : List.copyOf(pageData.links());
             String content = pageData.content() == null ? "" : pageData.content();
 
-            internetMock.put(pageData.url(), formatResponse(links, content));
+            internetMock.put(pageData.url(), formatResponse(content));
         }
 
         return Map.copyOf(internetMock);
     }
 
-    private static String formatResponse(List<String> links, String content) {
-        return "LINKS: " + String.join(",", links) + "\n"
-                + "CONTENT: " + content.replace("\r", "").replace("\n", "") + "\n";
+    private static String formatResponse(String content) {
+        return "CONTENT: " + content.replace("\r", "").replace("\n", "") + "\n";
     }
 
-    private record InternetPage(String url, String name, String content, List<String> links) {
+    private record InternetPage(String url, String content) {
     }
 }
