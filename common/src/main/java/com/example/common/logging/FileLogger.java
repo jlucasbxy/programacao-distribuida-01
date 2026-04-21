@@ -10,6 +10,8 @@ import java.nio.file.StandardOpenOption;
 public final class FileLogger implements AppLogger {
     private static final String DEFAULT_INFO_FILE_NAME = "application.log";
     private static final String DEFAULT_ERROR_FILE_NAME = "application-error.log";
+    private static final String LOGS_DIRECTORY_NAME = "logs";
+    private static final Path LOGS_DIRECTORY = Paths.get(LOGS_DIRECTORY_NAME).toAbsolutePath().normalize();
     private static final Object OUTPUT_LOCK = new Object();
 
     private final Path infoFilePath;
@@ -40,7 +42,30 @@ public final class FileLogger implements AppLogger {
 
     private static Path resolvePath(String fileName, String fallbackFileName) {
         String normalizedFileName = fileName == null || fileName.isBlank() ? fallbackFileName : fileName;
-        return Paths.get(normalizedFileName).toAbsolutePath().normalize();
+        Path requestedPath = Paths.get(normalizedFileName).normalize();
+        Path resolvedPath;
+
+        if (requestedPath.isAbsolute()) {
+            resolvedPath = LOGS_DIRECTORY.resolve(resolveSafeFileName(requestedPath, fallbackFileName)).normalize();
+        } else if (requestedPath.startsWith(LOGS_DIRECTORY_NAME)) {
+            resolvedPath = requestedPath.toAbsolutePath().normalize();
+        } else {
+            resolvedPath = LOGS_DIRECTORY.resolve(requestedPath).normalize();
+        }
+
+        if (!resolvedPath.startsWith(LOGS_DIRECTORY)) {
+            resolvedPath = LOGS_DIRECTORY.resolve(resolveSafeFileName(requestedPath, fallbackFileName)).normalize();
+        }
+
+        return resolvedPath;
+    }
+
+    private static String resolveSafeFileName(Path requestedPath, String fallbackFileName) {
+        Path fileName = requestedPath.getFileName();
+        if (fileName == null || fileName.toString().isBlank()) {
+            return fallbackFileName;
+        }
+        return fileName.toString();
     }
 
     private static String buildErrorFileName(String infoFileName) {
