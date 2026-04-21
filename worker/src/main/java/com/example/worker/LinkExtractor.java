@@ -8,12 +8,10 @@ import java.net.URI;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 final class LinkExtractor {
-    private static final Pattern ABSOLUTE_URI_PATTERN = Pattern.compile("(?i)^[a-z][a-z0-9+\\-.]*://.*");
-    private static final String HTTP = "http";
-    private static final String HTTPS = "https";
+    private static final String HTTPS_PREFIX = "https://";
+    private static final String WWW_PREFIX = "www.";
 
     private LinkExtractor() {}
 
@@ -22,100 +20,51 @@ final class LinkExtractor {
             return List.of();
         }
 
-        URI baseUri = toBaseUri(sourceUrl);
-        Document document = baseUri == null
-                ? Jsoup.parse(pageContent)
-                : Jsoup.parse(pageContent, baseUri.toString());
+        Document document = Jsoup.parse(pageContent, toBaseUri(sourceUrl));
         Set<String> extractedHosts = new LinkedHashSet<>();
         for (Element anchor : document.select("a[href]")) {
-            String href = anchor.attr("href");
-            String normalized = normalizeHref(href, baseUri);
-            if (normalized != null) {
-                extractedHosts.add(normalized);
+            String href = anchor.attr("abs:href").trim();
+            if (href.isEmpty()) {
+                href = anchor.attr("href").trim();
+            }
+
+            String host = extractHost(href);
+            if (host != null) {
+                extractedHosts.add(host);
             }
         }
 
         return List.copyOf(extractedHosts);
     }
 
-    private static String normalizeHref(String rawHref, URI baseUri) {
-        if (rawHref == null) {
+    private static String extractHost(String href) {
+        if (href == null || href.isBlank()) {
             return null;
         }
 
-        String href = rawHref.trim();
-        if (href.isEmpty() || href.startsWith("#")) {
-            return null;
-        }
-
-        int fragmentIndex = href.indexOf('#');
-        if (fragmentIndex >= 0) {
-            href = href.substring(0, fragmentIndex).trim();
-            if (href.isEmpty()) {
+        URI uri = parseUri(href);
+        if (uri == null || uri.getHost() == null) {
+            String maybeHost = href.trim();
+            if (!looksLikeHostReference(maybeHost)) {
                 return null;
             }
+            uri = parseUri(HTTPS_PREFIX + maybeHost);
         }
 
-        String hrefLower = href.toLowerCase();
-        if (hrefLower.startsWith("javascript:")
-                || hrefLower.startsWith("mailto:")
-                || hrefLower.startsWith("tel:")
-                || hrefLower.startsWith("data:")) {
+        if (uri == null) {
             return null;
         }
 
-        if (href.startsWith("//")) {
-            URI schemeRelative = parseUri(HTTPS + ":" + href);
-            return normalizeHost(schemeRelative == null ? null : schemeRelative.getHost());
-        }
-
-        if (ABSOLUTE_URI_PATTERN.matcher(href).matches()) {
-            URI absolute = parseUri(href);
-            if (absolute == null) {
-                return null;
-            }
-            String scheme = absolute.getScheme();
-            if (scheme == null) {
-                return null;
-            }
-            String normalizedScheme = scheme.toLowerCase();
-            if (!HTTP.equals(normalizedScheme) && !HTTPS.equals(normalizedScheme)) {
-                return null;
-            }
-            return normalizeHost(absolute.getHost());
-        }
-
-        URI noSchemeAsHost = parseUri(HTTPS + "://" + href);
-        if (noSchemeAsHost != null && looksLikeHostReference(href)) {
-            return normalizeHost(noSchemeAsHost.getHost());
-        }
-
-        if (baseUri == null) {
-            return null;
-        }
-
-        URI relative = parseUri(href);
-        if (relative == null) {
-            return null;
-        }
-
-        URI resolved = baseUri.resolve(relative);
-        return normalizeHost(resolved.getHost());
+        return normalizeHost(uri.getHost());
     }
 
-    private static URI toBaseUri(String sourceUrl) {
+    private static String toBaseUri(String sourceUrl) {
         if (sourceUrl == null || sourceUrl.isBlank()) {
-            return null;
+            return "";
         }
 
         String trimmed = sourceUrl.trim();
-        String candidate = ABSOLUTE_URI_PATTERN.matcher(trimmed).matches() ? trimmed : HTTPS + "://" + trimmed;
-        URI uri = parseUri(candidate);
-        if (uri == null || uri.getHost() == null) {
-            return null;
-        }
-
-        return uri;
+        return trimmed.contains("://") ? trimmed : HTTPS_PREFIX + trimmed;
     }
 
     private static URI parseUri(String value) {
@@ -135,8 +84,8 @@ final class LinkExtractor {
         if (normalized.endsWith(".")) {
             normalized = normalized.substring(0, normalized.length() - 1);
         }
-        if (normalized.startsWith("www.")) {
-            normalized = normalized.substring("www.".length());
+        if (normalized.startsWith(WWW_PREFIX)) {
+            normalized = normalized.substring(WWW_PREFIX.length());
         }
         if (normalized.isBlank()) {
             return null;
