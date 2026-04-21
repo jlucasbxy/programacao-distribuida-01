@@ -7,11 +7,10 @@ import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
 
 public class DataServerClient {
     private static final int DEFAULT_TIMEOUT_MS = 5_000;
+    private static final String ERROR_PREFIX = "ERROR: ";
 
     private final String host;
     private final int port;
@@ -37,11 +36,13 @@ public class DataServerClient {
         this.timeoutMs = timeoutMs;
     }
 
-    public DataServerResponse getPage(String url) throws IOException {
-        String requestLine = DataServerRequestFormatter.formatGetRequest(url);
-        String requestedUrl = requestLine.substring("GET ".length()).trim();
-
-        List<String> responseLines = new ArrayList<>();
+    public DataServerResponse getPage(String url) {
+        final String requestLine;
+        try {
+            requestLine = DataServerRequestFormatter.formatGetRequest(url);
+        } catch (IllegalArgumentException e) {
+            return DataServerResponse.error(e.getMessage());
+        }
 
         try (Socket socket = new Socket()) {
             socket.connect(new InetSocketAddress(host, port), timeoutMs);
@@ -50,14 +51,20 @@ public class DataServerClient {
             try (PrintWriter writer = new PrintWriter(socket.getOutputStream(), true, StandardCharsets.UTF_8);
                  BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8))) {
                 writer.println(requestLine);
-
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    responseLines.add(line);
+                String response = reader.readLine();
+                if (response == null) {
+                    return DataServerResponse.error("EMPTY_RESPONSE");
                 }
+                if (response.startsWith(ERROR_PREFIX)) {
+                    return DataServerResponse.error(response.substring(ERROR_PREFIX.length()).trim());
+                }
+                if (response.isBlank()) {
+                    return DataServerResponse.error("EMPTY_CONTENT");
+                }
+                return DataServerResponse.success(response);
             }
+        } catch (IOException e) {
+            return DataServerResponse.error(e.getMessage());
         }
-
-        return DataServerResponseParser.parse(responseLines, requestedUrl);
     }
 }

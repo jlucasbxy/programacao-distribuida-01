@@ -131,39 +131,36 @@ public class Worker {
     }
 
     private void processTask(String url, PrintWriter writer) {
-        try {
-            DataServerClient client = new DataServerClient(config.dataServerHost(), config.dataServerPort());
-            DataServerResponse page = client.getPage(url);
+        DataServerClient client = new DataServerClient(config.dataServerHost(), config.dataServerPort());
+        DataServerResponse page = client.getPage(url);
 
-            if (page.isError()) {
-                logger.error("Error fetching " + url + ": " + page.error());
-                sendLine(writer, "DONE " + url);
-                return;
-            }
-
-            // Temporarily disabled: links will be extracted from page.content() in a future iteration.
-            // List<String> links = extractDiscoveredLinks(page, url);
-            List<String> links = List.of();
-
-            String category = config.categories().entrySet().stream()
-                    .filter(e -> e.getValue().test(page.content()))
-                    .map(Map.Entry::getKey)
-                    .findFirst()
-                    .orElse("geral");
-
-            logger.info("crawled=" + url
-                    + " category=" + category
-                    + " links=" + links.size());
-
-            synchronized (writerLock) {
-                if (!links.isEmpty()) {
-                    writer.println("FOUND: " + String.join(", ", links) + " FROM " + url);
-                }
-                writer.println("DONE " + url);
-            }
-        } catch (IOException e) {
-            logger.error("Task error for " + url + ": " + e.getMessage());
+        if (page.isError()) {
+            logger.error("Error fetching " + url + ": " + page.error());
             sendLine(writer, "DONE " + url);
+            return;
+        }
+
+        String content = page.content();
+
+        // Temporarily disabled: links will be extracted from page.content() in a future iteration.
+        // List<String> links = extractDiscoveredLinks(content, url);
+        List<String> links = List.of();
+
+        String category = config.categories().entrySet().stream()
+                .filter(e -> e.getValue().test(content))
+                .map(Map.Entry::getKey)
+                .findFirst()
+                .orElse("geral");
+
+        logger.info("crawled=" + url
+                + " category=" + category
+                + " links=" + links.size());
+
+        synchronized (writerLock) {
+            if (!links.isEmpty()) {
+                writer.println("FOUND: " + String.join(", ", links) + " FROM " + url);
+            }
+            writer.println("DONE " + url);
         }
     }
 
@@ -173,10 +170,8 @@ public class Worker {
         }
     }
 
-    private List<String> extractDiscoveredLinks(DataServerResponse page, String sourceUrl) {
-        return page.links().stream()
-                .filter(link -> link != null && !link.isBlank())
-                .filter(link -> !link.equals(sourceUrl))
-                .toList();
+    private List<String> extractDiscoveredLinks(String pageContent, String sourceUrl) {
+        // Placeholder: links will be parsed from HTML/content in a later step.
+        return List.of();
     }
 }
