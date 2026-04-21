@@ -50,7 +50,11 @@ public final class SiteContentCsvLoader {
         for (int i = 0; i < domains.size(); i += linksPerSite) {
             int end = Math.min(i + linksPerSite, domains.size());
             List<String> links = domains.subList(i, end).stream().map(SiteContentCsvLoader::normalizeToUrl).toList();
+            System.out.println(links.size());
             siteContents.add(createSiteContentFromLinks(links));
+            for (var link : links) {
+                siteContents.add(createSiteContentFromLinks(List.of(link)));
+            }
         }
 
         return List.copyOf(siteContents);

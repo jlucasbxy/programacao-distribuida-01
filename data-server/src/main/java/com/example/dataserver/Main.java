@@ -11,7 +11,7 @@ public class Main {
 
     public static void main(String[] args) throws IOException {
         if (args.length == 0) {
-            LOGGER.error("Usage: Main --server [port] [dataFilePath]");
+            LOGGER.error("Usage: Main --server [port]");
             System.exit(1);
         }
 
