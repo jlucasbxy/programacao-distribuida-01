@@ -142,13 +142,18 @@ public class Worker {
 
         String content = page.content();
 
-        List<String> links = LinkExtractor.extract(content, url);
+        List<String> links = LinkExtractor.extract(content, url)
+                    .stream()
+                    .filter(link -> link != null && !link.isBlank())
+                    .filter(link -> !link.equals(url))
+                    .toList();
 
         String category = config.categories().entrySet().stream()
                 .filter(e -> e.getValue().test(content))
                 .map(Map.Entry::getKey)
                 .findFirst()
                 .orElse("geral");
+
 
         logger.info("crawled=" + url
                 + " category=" + category
