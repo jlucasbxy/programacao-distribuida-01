@@ -11,6 +11,10 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public final class SiteContentCsvLoader {
     private static final int DEFAULT_LINKS_PER_SITE = 1_000;
+    private static final List<Path> CSV_PATH_CANDIDATES = List.of(
+            Path.of("common/src/main/java/com/example/common/sitecontent/resources/top-1m.csv"),
+            Path.of("src/main/java/com/example/common/sitecontent/resources/top-1m.csv")
+    );
     private static final List<List<String>> CATEGORY_KEYWORDS = List.of(
             List.of("futebol", "basquete", "esporte", "placar"),
             List.of("noticia", "manchete", "jornal"),
@@ -28,19 +32,16 @@ public final class SiteContentCsvLoader {
     private SiteContentCsvLoader() {
     }
 
-    public static List<SiteContent> load(String filePath) {
-        return load(filePath, DEFAULT_LINKS_PER_SITE);
+    public static List<SiteContent> load() {
+        return load(DEFAULT_LINKS_PER_SITE);
     }
 
-    public static List<SiteContent> load(String filePath, int linksPerSite) {
-        if (filePath == null || filePath.isBlank()) {
-            throw new IllegalArgumentException("filePath must not be blank");
-        }
+    public static List<SiteContent> load(int linksPerSite) {
         if (linksPerSite < 1) {
             throw new IllegalArgumentException("linksPerSite must be greater than zero");
         }
 
-        List<String> domains = parseDomains(Path.of(filePath));
+        List<String> domains = parseDomains();
         if (domains.isEmpty()) {
             return List.of();
         }
@@ -55,28 +56,14 @@ public final class SiteContentCsvLoader {
         return List.copyOf(siteContents);
     }
 
-    private static List<String> parseDomains(Path filePath) {
+    private static List<String> parseDomains() {
         List<String> domains = new ArrayList<>();
+        Path filePath = resolveCsvFilePath();
 
         try (var reader = Files.newBufferedReader(filePath, StandardCharsets.UTF_8)) {
             String line;
             while ((line = reader.readLine()) != null) {
-                if (line.isBlank()) {
-                    continue;
-                }
-
-                String[] parts = line.split(",", 2);
-                if (parts.length < 2) {
-                    continue;
-                }
-
-                try {
-                    Integer.parseInt(parts[0].trim());
-                } catch (NumberFormatException ignored) {
-                    continue;
-                }
-
-                String domain = parts[1].trim();
+                String domain = line.trim();
                 if (domain.isEmpty()) {
                     continue;
                 }
@@ -88,6 +75,16 @@ public final class SiteContentCsvLoader {
         }
 
         return domains;
+    }
+
+    private static Path resolveCsvFilePath() {
+        for (Path candidate : CSV_PATH_CANDIDATES) {
+            if (Files.exists(candidate)) {
+                return candidate;
+            }
+        }
+
+        throw new IllegalStateException("CSV file not found in sitecontent resources folder");
     }
 
     private static SiteContent createSiteContentFromLinks(List<String> links) {
