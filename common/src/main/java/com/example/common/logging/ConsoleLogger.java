@@ -7,6 +7,8 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 
 public final class ConsoleLogger implements AppLogger {
+    private static final String ANSI_RED = "\u001B[31m";
+    private static final String ANSI_RESET = "\u001B[0m";
     private static final Object OUTPUT_LOCK = new Object();
     private static final FileOutputStream STDOUT = new FileOutputStream(FileDescriptor.out);
     private static final FileOutputStream STDERR = new FileOutputStream(FileDescriptor.err);
@@ -24,7 +26,7 @@ public final class ConsoleLogger implements AppLogger {
 
     @Override
     public void error(String message) {
-        writeLine(STDERR, message);
+        writeLine(STDERR, ANSI_RED + String.valueOf(message) + ANSI_RESET);
     }
 
     private void writeLine(OutputStream outputStream, String message) {
