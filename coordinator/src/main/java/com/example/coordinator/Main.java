@@ -7,7 +7,7 @@ import java.io.IOException;
 import java.util.Arrays;
 
 public class Main {
-    private static final AppLogger LOGGER = Loggers.consoleWithPrefix("[coordinator] ");
+    private static final AppLogger LOGGER = Loggers.consoleWithPrefix("coordinator-main", "[coordinator] ");
 
     public static void main(String[] args) throws IOException {
         if (args.length == 0) {

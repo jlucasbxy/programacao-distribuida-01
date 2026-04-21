@@ -6,7 +6,7 @@ import com.example.common.logging.Loggers;
 record DataServerConfig(int port, String dataFilePath) {
     private static final int DEFAULT_PORT = 9090;
     private static final String DEFAULT_DATA_FILE_PATH = "internet-mock.json";
-    private static final AppLogger LOGGER = Loggers.consoleWithPrefix("[data-server] ");
+    private static final AppLogger LOGGER = Loggers.consoleWithPrefix("data-server-config", "[data-server] ");
 
     static DataServerConfig fromArgs(String[] args) {
         int port = DEFAULT_PORT;

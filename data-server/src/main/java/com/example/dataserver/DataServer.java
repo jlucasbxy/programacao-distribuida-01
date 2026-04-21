@@ -23,7 +23,7 @@ public class DataServer {
 
     public DataServer(DataServerConfig config) {
         this.config = config;
-        this.logger = Loggers.consoleWithPrefix("[data-server] ");
+        this.logger = Loggers.consoleWithPrefix("data-server", "[data-server] ");
         this.internetMock = InternetMockJsonLoader.load(config.dataFilePath());
     }
 

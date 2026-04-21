@@ -14,7 +14,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 final class InternetMockJsonLoader {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final AppLogger LOGGER = Loggers.consoleWithPrefix("[data-server] ");
+    private static final AppLogger LOGGER = Loggers.consoleWithPrefix("data-server-loader", "[data-server] ");
 
     private InternetMockJsonLoader() {
     }

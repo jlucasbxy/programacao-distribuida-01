@@ -30,7 +30,7 @@ public class Worker {
 
     public Worker(WorkerConfig config) {
         this.config = config;
-        this.logger = Loggers.consoleWithPrefix("[" + config.workerId() + "] ");
+        this.logger = Loggers.consoleWithPrefix("worker-" + config.workerId(), "[" + config.workerId() + "] ");
     }
 
     public void start() {

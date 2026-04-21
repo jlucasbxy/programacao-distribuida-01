@@ -7,7 +7,7 @@ record CoordinatorConfig(int port, String seedsFile, int seedsCount) {
     private static final int DEFAULT_PORT = 7070;
     private static final String DEFAULT_SEEDS_FILE = "seeds.txt";
     private static final int UNLIMITED_SEEDS = -1;
-    private static final AppLogger LOGGER = Loggers.consoleWithPrefix("[coordinator] ");
+    private static final AppLogger LOGGER = Loggers.consoleWithPrefix("coordinator-config", "[coordinator] ");
 
     static CoordinatorConfig fromArgs(String[] args) {
         int port = DEFAULT_PORT;

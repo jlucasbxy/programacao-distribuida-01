@@ -35,7 +35,7 @@ public class Coordinator {
 
     public Coordinator(CoordinatorConfig config) {
         this.config = config;
-        this.logger = Loggers.consoleWithPrefix("[coordinator] ");
+        this.logger = Loggers.consoleWithPrefix("coordinator", "[coordinator] ");
         this.workers = new ConcurrentHashMap<>();
         this.crawlState = new CrawlState(workers, logger);
         this.running = new AtomicBoolean(true);

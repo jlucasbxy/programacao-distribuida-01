@@ -6,7 +6,7 @@ import com.example.common.logging.Loggers;
 public class Main {
     public static void main(String[] args) {
         WorkerConfig config = WorkerConfig.fromArgs(args);
-        AppLogger logger = Loggers.console();
+        AppLogger logger = Loggers.console("worker-main");
         logger.info("Starting worker " + config.workerId()
                 + " (capacity=" + config.capacity() + ")"
                 + " -> coordinator=" + config.coordinatorHost() + ":" + config.coordinatorPort()
