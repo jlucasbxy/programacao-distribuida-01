@@ -1,15 +1,16 @@
 package com.example.worker;
 
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+
 import java.net.URI;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 final class LinkExtractor {
-    private static final Pattern HREF_PATTERN = Pattern.compile(
-            "(?i)<a\\b[^>]*\\bhref\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)'|([^\\s\"'>]+))");
     private static final Pattern ABSOLUTE_URI_PATTERN = Pattern.compile("(?i)^[a-z][a-z0-9+\\-.]*://.*");
     private static final String HTTP = "http";
     private static final String HTTPS = "https";
@@ -22,11 +23,12 @@ final class LinkExtractor {
         }
 
         URI baseUri = toBaseUri(sourceUrl);
+        Document document = baseUri == null
+                ? Jsoup.parse(pageContent)
+                : Jsoup.parse(pageContent, baseUri.toString());
         Set<String> extractedHosts = new LinkedHashSet<>();
-        Matcher matcher = HREF_PATTERN.matcher(pageContent);
-
-        while (matcher.find()) {
-            String href = firstNonNull(matcher.group(1), matcher.group(2), matcher.group(3));
+        for (Element anchor : document.select("a[href]")) {
+            String href = anchor.attr("href");
             String normalized = normalizeHref(href, baseUri);
             if (normalized != null) {
                 extractedHosts.add(normalized);
@@ -41,7 +43,7 @@ final class LinkExtractor {
             return null;
         }
 
-        String href = decodeHtmlEntities(rawHref).trim();
+        String href = rawHref.trim();
         if (href.isEmpty() || href.startsWith("#")) {
             return null;
         }
@@ -152,21 +154,5 @@ final class LinkExtractor {
             return false;
         }
         return withoutPath.contains(".") && !withoutPath.startsWith(".") && !withoutPath.endsWith(".");
-    }
-
-    private static String decodeHtmlEntities(String value) {
-        return value
-                .replace("&amp;", "&")
-                .replace("&quot;", "\"")
-                .replace("&#39;", "'")
-                .replace("&apos;", "'")
-                .replace("&lt;", "<")
-                .replace("&gt;", ">");
-    }
-
-    private static String firstNonNull(String a, String b, String c) {
-        if (a != null) return a;
-        if (b != null) return b;
-        return c;
     }
 }
