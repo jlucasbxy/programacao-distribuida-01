@@ -39,6 +39,7 @@ public class DataServerClient {
 
     public DataServerResponse getPage(String url) throws IOException {
         String requestLine = DataServerRequestFormatter.formatGetRequest(url);
+        String requestedUrl = requestLine.substring("GET ".length()).trim();
 
         List<String> responseLines = new ArrayList<>();
 
@@ -57,6 +58,6 @@ public class DataServerClient {
             }
         }
 
-        return DataServerResponseParser.parse(responseLines);
+        return DataServerResponseParser.parse(responseLines, requestedUrl);
     }
 }

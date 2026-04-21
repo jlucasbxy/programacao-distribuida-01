@@ -13,6 +13,10 @@ public final class DataServerResponseParser {
     }
 
     public static DataServerResponse parse(List<String> responseLines) {
+        return parse(responseLines, null);
+    }
+
+    public static DataServerResponse parse(List<String> responseLines, String requestedUrl) {
         if (responseLines == null || responseLines.isEmpty()) {
             return DataServerResponse.error("EMPTY_RESPONSE");
         }
@@ -40,11 +44,31 @@ public final class DataServerResponseParser {
             }
         }
 
-        if (name == null || content == null) {
+        if (content == null) {
             return DataServerResponse.error("INVALID_RESPONSE");
         }
 
+        String fallbackName = normalizeRequestedUrl(requestedUrl);
+        if (name == null || name.isBlank()) {
+            name = fallbackName;
+        }
+
         return DataServerResponse.success(name, links, content);
+    }
+
+    private static String normalizeRequestedUrl(String requestedUrl) {
+        if (requestedUrl == null) {
+            return null;
+        }
+
+        String normalized = requestedUrl.trim();
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        if (normalized.startsWith("/")) {
+            normalized = normalized.substring(1);
+        }
+        return normalized.isEmpty() ? null : normalized;
     }
 
     private static List<String> parseLinks(String linksValue) {
