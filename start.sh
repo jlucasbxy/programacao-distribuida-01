@@ -109,11 +109,9 @@ fi
 mvn -f "$ROOT/pom.xml" install -DskipTests -q
 
 if $START_DATA_SERVER; then
-    INTERNET_MOCK="$ROOT/data-server/src/main/resources/internet-mock-full.json"
-
     echo "Starting data-server..."
     mvn -f "$ROOT/data-server/pom.xml" exec:java \
-        -Dexec.args="--server 9090 $INTERNET_MOCK" &
+        -Dexec.args="--server 9090" &
     PIDS+=($!)
     sleep 1
 fi
