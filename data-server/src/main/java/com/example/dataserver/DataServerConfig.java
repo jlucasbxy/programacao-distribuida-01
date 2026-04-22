@@ -2,6 +2,7 @@ package com.example.dataserver;
 
 import com.example.common.logging.AppLogger;
 import com.example.common.logging.Loggers;
+import com.example.common.net.PortParser;
 
 record DataServerConfig(int port) {
     private static final int DEFAULT_PORT = 9090;
@@ -10,16 +11,7 @@ record DataServerConfig(int port) {
     static DataServerConfig fromArgs(String[] args) {
         int port = DEFAULT_PORT;
         if (args.length > 0) {
-            try {
-                int parsed = Integer.parseInt(args[0]);
-                if (parsed < 1 || parsed > 65535) {
-                    LOGGER.error("Invalid port " + parsed + ". Falling back to " + DEFAULT_PORT + ".");
-                } else {
-                    port = parsed;
-                }
-            } catch (NumberFormatException e) {
-                LOGGER.error("Invalid port format. Falling back to " + DEFAULT_PORT + ".");
-            }
+            port = PortParser.parseOrDefault(args[0], DEFAULT_PORT, LOGGER);
         }
         return new DataServerConfig(port);
     }

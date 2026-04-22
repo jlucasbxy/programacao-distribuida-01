@@ -2,6 +2,7 @@ package com.example.coordinator;
 
 import com.example.common.logging.AppLogger;
 import com.example.common.logging.Loggers;
+import com.example.common.net.PortParser;
 
 record CoordinatorConfig(int port, int seedsCount) {
     private static final int DEFAULT_PORT = 7070;
@@ -16,7 +17,7 @@ record CoordinatorConfig(int port, int seedsCount) {
             if ("--seeds-count".equals(args[i])) {
                 seedsCount = parseSeedsCount(args, ++i, seedsCount);
             } else if (i == 0) {
-                port = parsePort(args[i]);
+                port = PortParser.parseOrDefault(args[i], DEFAULT_PORT, LOGGER);
             }
         }
 
@@ -41,17 +42,4 @@ record CoordinatorConfig(int port, int seedsCount) {
         }
     }
 
-    private static int parsePort(String value) {
-        try {
-            int parsed = Integer.parseInt(value);
-            if (parsed < 1 || parsed > 65535) {
-                LOGGER.error("Invalid port " + parsed + ". Falling back to " + DEFAULT_PORT + ".");
-                return DEFAULT_PORT;
-            }
-            return parsed;
-        } catch (NumberFormatException e) {
-            LOGGER.error("Invalid port format. Falling back to " + DEFAULT_PORT + ".");
-            return DEFAULT_PORT;
-        }
-    }
 }
