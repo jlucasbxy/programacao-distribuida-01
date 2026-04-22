@@ -112,9 +112,6 @@ public final class SiteContentLoader {
 
     private static SiteContent createSiteContentFromLinks(List<String> links) {
         String url = links.get(0);
-        if (links.size() == 1) {
-            return new SiteContent(url, "");
-        }
 
         StringBuilder items = new StringBuilder();
         for (int i = 0; i < links.size(); i++) {
