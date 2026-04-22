@@ -108,7 +108,7 @@ public final class SiteContentLoader {
 
         StringBuilder items = new StringBuilder();
         for (int i = 0; i < links.size(); i++) {
-            String link = normalizeToUrl(links.get(i));
+            String link = links.get(i);
             items.append("<li><a href=\"").append(link).append("\">").append(i + 1).append("</a></li>");
         }
 
