@@ -109,13 +109,7 @@ fi
 mvn -f "$ROOT/pom.xml" install -DskipTests -q
 
 if $START_DATA_SERVER; then
-    INTERNET_MOCK_DEFAULT="$ROOT/data-server/src/main/resources/internet-mock.json"
-    INTERNET_MOCK_FULL="$ROOT/data-server/src/main/resources/internet-mock-full.json"
-    INTERNET_MOCK="$INTERNET_MOCK_DEFAULT"
-
-    if [[ -f "$INTERNET_MOCK_FULL" ]]; then
-        INTERNET_MOCK="$INTERNET_MOCK_FULL"
-    fi
+    INTERNET_MOCK="$ROOT/data-server/src/main/resources/internet-mock-full.json"
 
     echo "Starting data-server..."
     mvn -f "$ROOT/data-server/pom.xml" exec:java \
