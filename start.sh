@@ -102,28 +102,40 @@ cleanup() {
 }
 trap cleanup SIGINT SIGTERM
 
+build_runtime_classpath() {
+    local module="$1"
+    local classpath="$ROOT/$module/target/classes:$ROOT/common/target/classes"
+    local dependency_dir="$ROOT/$module/target/dependency"
+
+    if [[ -d "$dependency_dir" ]]; then
+        classpath="$classpath:$dependency_dir/*"
+    fi
+
+    printf '%s' "$classpath"
+}
+
 echo "Building all modules..."
 if $CLEAN_BUILD; then
     mvn -f "$ROOT/pom.xml" clean -q
 fi
 mvn -f "$ROOT/pom.xml" install -DskipTests -q
+echo "Preparing runtime dependencies..."
+mvn -f "$ROOT/pom.xml" dependency:copy-dependencies -DincludeScope=runtime -q
 
 if $START_DATA_SERVER; then
     echo "Starting data-server..."
-    mvn -f "$ROOT/data-server/pom.xml" exec:java \
-        -Dexec.args="--server 9090" &
+    java -cp "$(build_runtime_classpath data-server)" com.example.dataserver.Main --server 9090 &
     PIDS+=($!)
     sleep 1
 fi
 
 if $START_COORDINATOR; then
     echo "Starting coordinator..."
-    COORDINATOR_ARGS="--coordinator"
+    COORDINATOR_ARGS=(--coordinator)
     if [[ -n "$SEEDS_COUNT" ]]; then
-        COORDINATOR_ARGS="$COORDINATOR_ARGS --seeds-count $SEEDS_COUNT"
+        COORDINATOR_ARGS+=(--seeds-count "$SEEDS_COUNT")
     fi
-    mvn -f "$ROOT/coordinator/pom.xml" exec:java \
-        -Dexec.args="$COORDINATOR_ARGS" &
+    java -cp "$(build_runtime_classpath coordinator)" com.example.coordinator.Main "${COORDINATOR_ARGS[@]}" &
     PIDS+=($!)
     sleep 1
 fi
@@ -131,7 +143,7 @@ fi
 if $START_WORKERS; then
     echo "Starting $NUM_WORKERS worker(s)..."
     for i in $(seq 1 "$NUM_WORKERS"); do
-        mvn -f "$ROOT/worker/pom.xml" exec:java -Dexec.args="--worker-id worker-$i --capacity $WORKER_CAPACITY" &
+        java -cp "$(build_runtime_classpath worker)" com.example.worker.Main --worker-id "worker-$i" --capacity "$WORKER_CAPACITY" &
         PIDS+=($!)
     done
 fi
