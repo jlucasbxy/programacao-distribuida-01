@@ -153,7 +153,10 @@ public class Worker {
                 + " foundLinks=" + links.size());
 
         if (!links.isEmpty()) {
-            sendLine(writer, Protocol.FOUND_PREFIX + " " + String.join(", ", links) + " FROM " + url);
+            String foundMessage = Protocol.FOUND_PREFIX + " " + String.join(", ", links)
+                    + " FROM " + url
+                    + " CATEGORY=" + category;
+            sendLine(writer, foundMessage);
         }
         sendLine(writer, Protocol.IDLE + " " + url);
     }
