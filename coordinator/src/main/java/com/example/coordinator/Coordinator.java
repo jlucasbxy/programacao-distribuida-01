@@ -3,6 +3,7 @@ package com.example.coordinator;
 import com.example.common.concurrent.ExecutorShutdown;
 import com.example.common.logging.AppLogger;
 import com.example.common.logging.Loggers;
+import com.example.common.protocol.Protocol;
 import com.example.common.sitecontent.SiteContentLoader;
 
 import java.io.BufferedReader;
@@ -85,7 +86,7 @@ public class Coordinator {
             try {
                 while (running.get()) {
                     Thread.sleep(PING_INTERVAL_MS);
-                    broadcastParallel("PING");
+                    broadcastParallel(Protocol.PING);
                 }
             } catch (InterruptedException ignored) {}
         });
@@ -122,7 +123,7 @@ public class Coordinator {
                 return;
             }
 
-            writer.println("REGISTERED " + worker.id() + " " + worker.capacity());
+            writer.println(Protocol.REGISTERED + " " + worker.id() + " " + worker.capacity());
             tryDispatch();
 
             String line;
@@ -196,8 +197,8 @@ public class Coordinator {
 
     private static String parseDoneUrl(String line) {
         String trimmed = line.trim();
-        if (trimmed.length() <= "DONE".length()) return null;
-        String payload = trimmed.substring("DONE".length()).trim();
+        if (trimmed.length() <= Protocol.DONE.length()) return null;
+        String payload = trimmed.substring(Protocol.DONE.length()).trim();
         return payload.isBlank() ? null : payload;
     }
 
@@ -205,7 +206,7 @@ public class Coordinator {
         for (WorkerState w : workers.values()) {
             String url;
             while ((url = crawlState.pollAndAssign(w)) != null) {
-                w.sendLine("TASK " + url);
+                w.sendLine(Protocol.TASK + " " + url);
             }
         }
     }
@@ -218,7 +219,7 @@ public class Coordinator {
     }
 
     private void broadcastStop() {
-        broadcastParallel("STOP");
+        broadcastParallel(Protocol.STOP);
     }
 
     private void requestShutdown() {

@@ -2,6 +2,7 @@ package com.example.coordinator;
 
 import com.example.common.logging.AppLogger;
 import com.example.common.net.UrlNormalizer;
+import com.example.common.protocol.Protocol;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -95,7 +96,7 @@ public class CrawlState {
     }
 
     private static List<String> parseFoundLinks(String foundMessage) {
-        String payload = foundMessage.substring("FOUND:".length()).trim();
+        String payload = foundMessage.substring(Protocol.FOUND_PREFIX.length()).trim();
         int fromIndex = payload.toUpperCase().lastIndexOf(" FROM ");
         String linksPart = fromIndex >= 0 ? payload.substring(0, fromIndex).trim() : payload;
         if (linksPart.isBlank()) return List.of();

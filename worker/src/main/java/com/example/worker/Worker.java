@@ -5,6 +5,7 @@ import com.example.common.dataserver.DataServerClient;
 import com.example.common.dataserver.DataServerResponse;
 import com.example.common.logging.AppLogger;
 import com.example.common.logging.Loggers;
+import com.example.common.protocol.Protocol;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -65,13 +66,13 @@ public class Worker {
     }
 
     private boolean register(BufferedReader reader, PrintWriter writer) throws IOException {
-        sendLine(writer, "REGISTER " + config.workerId() + " " + config.capacity());
+        sendLine(writer, Protocol.REGISTER + " " + config.workerId() + " " + config.capacity());
         String registered = reader.readLine();
-        if (registered == null || !registered.startsWith("REGISTERED")) {
+        if (registered == null || !registered.startsWith(Protocol.REGISTERED)) {
             logger.error("Registration failed: " + registered);
             return false;
         }
-        logger.info("REGISTERED (capacity=" + config.capacity() + ")");
+        logger.info(Protocol.REGISTERED + " (capacity=" + config.capacity() + ")");
         return true;
     }
 
@@ -83,13 +84,13 @@ public class Worker {
     ) throws IOException {
         String line;
         while ((line = reader.readLine()) != null) {
-            if (line.startsWith("TASK ")) {
-                String url = line.substring(5).trim();
+            if (line.startsWith(Protocol.TASK + " ")) {
+                String url = line.substring(Protocol.TASK.length() + 1).trim();
                 taskPool.submit(() -> processTask(url, writer));
-            } else if ("STOP".equals(line)) {
+            } else if (Protocol.STOP.equals(line)) {
                 pingTask.cancel(true);
                 drainTasks(taskPool);
-                sendLine(writer, "QUIT");
+                sendLine(writer, Protocol.QUIT);
                 return;
             }
             // PING, ACK *, REGISTERED (already consumed), and unknown lines are ignored
@@ -116,7 +117,7 @@ public class Worker {
             try {
                 while (!socket.isClosed()) {
                     Thread.sleep(PING_INTERVAL_MS);
-                    if (!socket.isClosed()) sendLine(writer, "PING");
+                    if (!socket.isClosed()) sendLine(writer, Protocol.PING);
                 }
             } catch (InterruptedException ignored) {}
         });
@@ -128,7 +129,7 @@ public class Worker {
 
         if (page.isError()) {
             logger.error("Error fetching " + url + ": " + page.error());
-            sendLine(writer, "DONE " + url);
+            sendLine(writer, Protocol.DONE + " " + url);
             return;
         }
 
@@ -153,9 +154,9 @@ public class Worker {
 
         synchronized (writerLock) {
             if (!links.isEmpty()) {
-                writer.println("FOUND: " + String.join(", ", links) + " FROM " + url);
+                writer.println(Protocol.FOUND_PREFIX + " " + String.join(", ", links) + " FROM " + url);
             }
-            writer.println("DONE " + url);
+            writer.println(Protocol.DONE + " " + url);
         }
     }
 

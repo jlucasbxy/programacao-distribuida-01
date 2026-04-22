@@ -1,14 +1,14 @@
 package com.example.coordinator;
 
+import com.example.common.protocol.Protocol;
+
 import java.util.UUID;
 
 record RegisterRequest(String workerId, int capacity) {
 
-    private static final String PREFIX = "REGISTER";
-
     static RegisterRequest parse(String line) {
         String normalized = line == null ? "" : line.trim();
-        if (!normalized.startsWith(PREFIX)) {
+        if (!normalized.startsWith(Protocol.REGISTER)) {
             return null;
         }
 
