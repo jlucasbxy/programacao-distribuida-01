@@ -176,12 +176,12 @@ public class Coordinator {
                 writer.println("ACK FOUND " + added);
                 if (added > 0) tryDispatch();
             }
-            case DONE -> {
-                String url = parseDoneUrl(line);
+            case IDLE -> {
+                String url = parseIdleUrl(line);
                 if (url != null) {
                     crawlState.completeTask(worker, url);
                 }
-                writer.println("ACK DONE");
+                writer.println("ACK IDLE");
                 crawlState.evaluateCompletion();
                 tryDispatch();
             }
@@ -195,10 +195,10 @@ public class Coordinator {
         return true;
     }
 
-    private static String parseDoneUrl(String line) {
+    private static String parseIdleUrl(String line) {
         String trimmed = line.trim();
-        if (trimmed.length() <= Protocol.DONE.length()) return null;
-        String payload = trimmed.substring(Protocol.DONE.length()).trim();
+        if (trimmed.length() <= Protocol.IDLE.length()) return null;
+        String payload = trimmed.substring(Protocol.IDLE.length()).trim();
         return payload.isBlank() ? null : payload;
     }
 

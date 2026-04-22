@@ -129,7 +129,7 @@ public class Worker {
 
         if (page.isError()) {
             logger.error("Error fetching " + url + ": " + page.error());
-            sendLine(writer, Protocol.DONE + " " + url);
+            sendLine(writer, Protocol.IDLE + " " + url);
             return;
         }
 
@@ -155,7 +155,7 @@ public class Worker {
         if (!links.isEmpty()) {
             sendLine(writer, Protocol.FOUND_PREFIX + " " + String.join(", ", links) + " FROM " + url);
         }
-        sendLine(writer, Protocol.DONE + " " + url);
+        sendLine(writer, Protocol.IDLE + " " + url);
     }
 
     private void sendLine(PrintWriter writer, String line) {
