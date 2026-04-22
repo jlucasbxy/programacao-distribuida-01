@@ -59,6 +59,26 @@ public final class SiteContentLoader {
         return List.copyOf(siteContents);
     }
 
+    public static List<String> loadSeeds(int count) {
+        List<String> domains = parseDomains();
+        if (domains.isEmpty()) {
+            return List.of();
+        }
+        List<String> seeds = new ArrayList<>();
+        int requestedCount = count == -1 ? 1000 : count;
+        if (requestedCount < 1) {
+            return List.of();
+        }
+
+        int maxAvailableSeeds = ((domains.size() - 1) / DEFAULT_LINKS_PER_SITE) + 1;
+        int seedCount = Math.min(requestedCount, maxAvailableSeeds);
+
+        for (int i = 0; i < seedCount; i += 1) {
+            seeds.add(SiteContentLoader.normalizeToUrl(domains.get(i * DEFAULT_LINKS_PER_SITE)));
+        }
+        return seeds;
+    }
+
     private static List<String> parseDomains() {
         List<String> domains = new ArrayList<>();
         Path filePath = resolveCsvFilePath();
