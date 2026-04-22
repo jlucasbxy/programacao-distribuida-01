@@ -15,22 +15,12 @@ record CoordinatorConfig(int port, int seedsCount) {
         for (int i = 0; i < args.length; i++) {
             if ("--seeds-count".equals(args[i])) {
                 seedsCount = parseSeedsCount(args, ++i, seedsCount);
-            } else if ("--seeds-file".equals(args[i])) {
-                skipSeedsFileValue(args, ++i);
             } else if (i == 0) {
                 port = parsePort(args[i]);
             }
         }
 
         return new CoordinatorConfig(port, seedsCount);
-    }
-
-    private static void skipSeedsFileValue(String[] args, int valueIndex) {
-        if (valueIndex >= args.length) {
-            LOGGER.error("--seeds-file requires a path argument.");
-            return;
-        }
-        LOGGER.info("--seeds-file is deprecated and ignored.");
     }
 
     private static int parseSeedsCount(String[] args, int valueIndex, int fallback) {
