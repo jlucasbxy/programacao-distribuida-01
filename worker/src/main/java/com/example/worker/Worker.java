@@ -152,12 +152,10 @@ public class Worker {
                 + " category=" + category
                 + " foundLinks=" + links.size());
 
-        synchronized (writerLock) {
-            if (!links.isEmpty()) {
-                writer.println(Protocol.FOUND_PREFIX + " " + String.join(", ", links) + " FROM " + url);
-            }
-            writer.println(Protocol.DONE + " " + url);
+        if (!links.isEmpty()) {
+            sendLine(writer, Protocol.FOUND_PREFIX + " " + String.join(", ", links) + " FROM " + url);
         }
+        sendLine(writer, Protocol.DONE + " " + url);
     }
 
     private void sendLine(PrintWriter writer, String line) {
