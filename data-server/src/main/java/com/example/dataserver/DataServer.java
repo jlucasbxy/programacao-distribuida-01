@@ -2,6 +2,8 @@ package com.example.dataserver;
 
 import com.example.common.logging.AppLogger;
 import com.example.common.logging.Loggers;
+import com.example.common.sitecontent.SiteContent;
+import com.example.common.sitecontent.SiteContentLoader;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -10,6 +12,8 @@ import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -18,13 +22,30 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class DataServer {
     private final DataServerConfig config;
-    private final Map<String, String> internetMock;
+    private final Map<String, String> siteContentByUrl;
     private final AppLogger logger;
 
     public DataServer(DataServerConfig config) {
         this.config = config;
         this.logger = Loggers.consoleWithPrefix("data-server", "[data-server] ");
-        this.internetMock = InternetMockJsonLoader.load();
+        this.siteContentByUrl = loadSiteContentByUrl();
+    }
+
+    private Map<String, String> loadSiteContentByUrl() {
+        List<SiteContent> loadedPages;
+        try {
+            loadedPages = SiteContentLoader.load();
+        } catch (RuntimeException e) {
+            logger.error("Failed to generate site content from CSV: " + e.getMessage() + ". Starting with empty data.");
+            return Map.of();
+        }
+
+        Map<String, String> loadedContent = new HashMap<>();
+        for (SiteContent pageData : loadedPages) {
+            loadedContent.put(pageData.url(), pageData.content());
+        }
+
+        return Map.copyOf(loadedContent);
     }
 
     public void start() {
@@ -48,7 +69,7 @@ public class DataServer {
             workers.shutdown();
         }));
 
-        logger.info("Data server listening on port " + serverSocket.getLocalPort() + " with " + internetMock.size() + " pages loaded.");
+        logger.info("Data server listening on port " + serverSocket.getLocalPort() + " with " + siteContentByUrl.size() + " pages loaded.");
 
         try {
             while (running.get()) {
@@ -79,7 +100,7 @@ public class DataServer {
              BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
              PrintWriter writer = new PrintWriter(socket.getOutputStream(), true, StandardCharsets.UTF_8)) {
             String requestLine = reader.readLine();
-            String response = RequestHandler.formatResponse(internetMock, requestLine);
+            String response = RequestHandler.formatResponse(siteContentByUrl, requestLine);
             writer.print(response);
             writer.flush();
         } catch (IOException e) {
