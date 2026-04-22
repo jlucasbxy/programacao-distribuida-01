@@ -3,36 +3,34 @@ package com.example.coordinator;
 import com.example.common.logging.AppLogger;
 import com.example.common.logging.Loggers;
 
-record CoordinatorConfig(int port, String seedsFile, int seedsCount) {
+record CoordinatorConfig(int port, int seedsCount) {
     private static final int DEFAULT_PORT = 7070;
-    private static final String DEFAULT_SEEDS_FILE = "seeds.txt";
     private static final int UNLIMITED_SEEDS = -1;
     private static final AppLogger LOGGER = Loggers.consoleWithPrefix("coordinator-config", "[coordinator] ");
 
     static CoordinatorConfig fromArgs(String[] args) {
         int port = DEFAULT_PORT;
-        String seedsFile = DEFAULT_SEEDS_FILE;
         int seedsCount = UNLIMITED_SEEDS;
 
         for (int i = 0; i < args.length; i++) {
-            if ("--seeds-file".equals(args[i])) {
-                seedsFile = parseSeedsFile(args, ++i, seedsFile);
-            } else if ("--seeds-count".equals(args[i])) {
+            if ("--seeds-count".equals(args[i])) {
                 seedsCount = parseSeedsCount(args, ++i, seedsCount);
+            } else if ("--seeds-file".equals(args[i])) {
+                skipSeedsFileValue(args, ++i);
             } else if (i == 0) {
                 port = parsePort(args[i]);
             }
         }
 
-        return new CoordinatorConfig(port, seedsFile, seedsCount);
+        return new CoordinatorConfig(port, seedsCount);
     }
 
-    private static String parseSeedsFile(String[] args, int valueIndex, String fallback) {
+    private static void skipSeedsFileValue(String[] args, int valueIndex) {
         if (valueIndex >= args.length) {
             LOGGER.error("--seeds-file requires a path argument.");
-            return fallback;
+            return;
         }
-        return args[valueIndex];
+        LOGGER.info("--seeds-file is deprecated and ignored.");
     }
 
     private static int parseSeedsCount(String[] args, int valueIndex, int fallback) {

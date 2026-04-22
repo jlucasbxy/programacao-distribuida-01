@@ -126,7 +126,7 @@ fi
 
 if $START_COORDINATOR; then
     echo "Starting coordinator..."
-    COORDINATOR_ARGS="--coordinator --seeds-file $ROOT/coordinator/src/main/resources/seeds.txt"
+    COORDINATOR_ARGS="--coordinator"
     if [[ -n "$SEEDS_COUNT" ]]; then
         COORDINATOR_ARGS="$COORDINATOR_ARGS --seeds-count $SEEDS_COUNT"
     fi

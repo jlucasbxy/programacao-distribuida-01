@@ -2,6 +2,7 @@ package com.example.coordinator;
 
 import com.example.common.logging.AppLogger;
 import com.example.common.logging.Loggers;
+import com.example.common.sitecontent.SiteContentLoader;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -39,10 +40,8 @@ public class Coordinator {
         this.workers = new ConcurrentHashMap<>();
         this.crawlState = new CrawlState(workers, logger);
         this.running = new AtomicBoolean(true);
-
         crawlState.setOnCompletion(this::onCrawlComplete);
-
-        crawlState.enqueueAllIfNew(SeedsLoader.load(config.seedsFile(), config.seedsCount(), logger));
+        crawlState.enqueueAllIfNew(SiteContentLoader.loadSeeds(config.seedsCount()));
     }
 
     public void start() throws IOException {

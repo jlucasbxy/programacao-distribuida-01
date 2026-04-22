@@ -11,7 +11,7 @@ public class Main {
 
     public static void main(String[] args) throws IOException {
         if (args.length == 0) {
-            LOGGER.error("Usage: Main --coordinator [port] [--seeds-file <path>] [--seeds-count <n>]");
+            LOGGER.error("Usage: Main --coordinator [port] [--seeds-count <n>]");
             System.exit(1);
         }
 
