@@ -11,7 +11,6 @@ import java.util.Set;
 
 final class LinkExtractor {
     private static final String HTTPS_PREFIX = "https://";
-    private static final String WWW_PREFIX = "www.";
 
     private LinkExtractor() {}
 
@@ -21,41 +20,44 @@ final class LinkExtractor {
         }
 
         Document document = Jsoup.parse(pageContent, toBaseUri(sourceUrl));
-        Set<String> extractedHosts = new LinkedHashSet<>();
+        Set<String> extractedLinks = new LinkedHashSet<>();
         for (Element anchor : document.select("a[href]")) {
             String href = anchor.attr("abs:href").trim();
             if (href.isEmpty()) {
                 href = anchor.attr("href").trim();
             }
 
-            String host = extractHost(href);
-            if (host != null) {
-                extractedHosts.add(host);
+            String link = extractLink(href);
+            if (link != null) {
+                extractedLinks.add(link);
             }
         }
 
-        return List.copyOf(extractedHosts);
+        return List.copyOf(extractedLinks);
     }
 
-    private static String extractHost(String href) {
+    private static String extractLink(String href) {
         if (href == null || href.isBlank()) {
             return null;
         }
 
-        URI uri = parseUri(href);
-        if (uri == null || uri.getHost() == null) {
-            String maybeHost = href.trim();
-            if (!looksLikeHostReference(maybeHost)) {
-                return null;
-            }
-            uri = parseUri(HTTPS_PREFIX + maybeHost);
-        }
+        URI uri = parseUri(href.trim());
 
         if (uri == null) {
             return null;
         }
 
-        return normalizeHost(uri.getHost());
+        String scheme = uri.getScheme();
+        String host = uri.getHost();
+        if (scheme == null || host == null) {
+            return null;
+        }
+
+        if (!scheme.equalsIgnoreCase("http") && !scheme.equalsIgnoreCase("https")) {
+            return null;
+        }
+
+        return uri.toString();
     }
 
     private static String toBaseUri(String sourceUrl) {
@@ -75,33 +77,4 @@ final class LinkExtractor {
         }
     }
 
-    private static String normalizeHost(String host) {
-        if (host == null || host.isBlank()) {
-            return null;
-        }
-
-        String normalized = host.trim().toLowerCase();
-        if (normalized.endsWith(".")) {
-            normalized = normalized.substring(0, normalized.length() - 1);
-        }
-        if (normalized.startsWith(WWW_PREFIX)) {
-            normalized = normalized.substring(WWW_PREFIX.length());
-        }
-        if (normalized.isBlank()) {
-            return null;
-        }
-        return normalized;
-    }
-
-    private static boolean looksLikeHostReference(String href) {
-        String withoutPath = href;
-        int slashIndex = href.indexOf('/');
-        if (slashIndex >= 0) {
-            withoutPath = href.substring(0, slashIndex);
-        }
-        if (withoutPath.isBlank()) {
-            return false;
-        }
-        return withoutPath.contains(".") && !withoutPath.startsWith(".") && !withoutPath.endsWith(".");
-    }
 }
