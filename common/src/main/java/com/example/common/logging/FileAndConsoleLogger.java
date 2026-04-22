@@ -1,6 +1,11 @@
 package com.example.common.logging;
 
 public final class FileAndConsoleLogger implements AppLogger {
+    @FunctionalInterface
+    private interface LogAction {
+        void log(AppLogger logger, String message);
+    }
+
     private final AppLogger consoleLogger;
     private final AppLogger fileLogger;
 
@@ -27,40 +32,25 @@ public final class FileAndConsoleLogger implements AppLogger {
 
     @Override
     public void info(String message) {
-        RuntimeException firstFailure = null;
-
-        try {
-            consoleLogger.info(message);
-        } catch (RuntimeException e) {
-            firstFailure = e;
-        }
-
-        try {
-            fileLogger.info(message);
-        } catch (RuntimeException e) {
-            if (firstFailure != null) {
-                e.addSuppressed(firstFailure);
-            }
-            throw e;
-        }
-
-        if (firstFailure != null) {
-            throw firstFailure;
-        }
+        logWithFallback(message, AppLogger::info);
     }
 
     @Override
     public void error(String message) {
+        logWithFallback(message, AppLogger::error);
+    }
+
+    private void logWithFallback(String message, LogAction action) {
         RuntimeException firstFailure = null;
 
         try {
-            consoleLogger.error(message);
+            action.log(consoleLogger, message);
         } catch (RuntimeException e) {
             firstFailure = e;
         }
 
         try {
-            fileLogger.error(message);
+            action.log(fileLogger, message);
         } catch (RuntimeException e) {
             if (firstFailure != null) {
                 e.addSuppressed(firstFailure);
