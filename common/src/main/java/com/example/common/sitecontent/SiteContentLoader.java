@@ -21,13 +21,6 @@ public final class SiteContentLoader {
             List.of("clima", "temperatura", "chuva", "tempo"),
             List.of("tech", "software", "computador")
     );
-    private static final List<String> CONTEXT_SNIPPETS = List.of(
-            "atualizacao diaria",
-            "resumo rapido",
-            "boletim local",
-            "destaque da hora",
-            "painel de leitura"
-    );
 
     private SiteContentLoader() {
     }
@@ -133,11 +126,10 @@ public final class SiteContentLoader {
     private static String buildCategorySnippet() {
         List<String> keywords = randomItem(CATEGORY_KEYWORDS);
         String keyword = randomItem(keywords);
-        String context = randomItem(CONTEXT_SNIPPETS);
         int token = ThreadLocalRandom.current().nextInt(1_000_000);
         String tokenText = String.format("%06d", token);
 
-        return "<section><p>" + context + " " + keyword + " token-" + tokenText + "</p></section>";
+        return "<section><p>" + keyword + " token-" + tokenText + "</p></section>";
     }
 
     private static <T> T randomItem(List<T> items) {
