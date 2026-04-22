@@ -51,7 +51,7 @@ public final class SiteContentLoader {
             int end = Math.min(i + linksPerSite, domains.size());
             List<String> links = domains.subList(i, end).stream().map(SiteContentLoader::normalizeToUrl).toList();
             siteContents.add(createSiteContentFromLinks(links));
-            for (var link : links) {
+            for (var link : links.subList(1, links.size())) {
                 siteContents.add(createSiteContentFromLinks(List.of(link)));
             }
         }
