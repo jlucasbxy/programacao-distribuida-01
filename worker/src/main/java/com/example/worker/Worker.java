@@ -22,8 +22,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 public class Worker {
-    private static final int PING_INTERVAL_MS       = 5_000;
-    private static final int COORDINATOR_TIMEOUT_MS = 15_000;
+    private static final int PING_INTERVAL_MS       = 15_000;
+    private static final int COORDINATOR_TIMEOUT_MS = PING_INTERVAL_MS * 3;
     private static final int SHUTDOWN_TIMEOUT_SEC   = 30;
 
     private final WorkerConfig config;

@@ -30,8 +30,8 @@ public class Coordinator {
     private final AtomicBoolean running;
     private final AppLogger logger;
 
-    private static final int WORKER_TIMEOUT_MS  = 15_000;
-    private static final int PING_INTERVAL_MS   = 5_000;
+    private static final int PING_INTERVAL_MS   = 15_000;
+    private static final int WORKER_TIMEOUT_MS  = PING_INTERVAL_MS * 3;
 
     private volatile ServerSocket serverSocket;
     private volatile ExecutorService workerConnections;
