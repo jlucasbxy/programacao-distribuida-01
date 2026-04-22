@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
-public final class SiteContentCsvLoader {
+public final class SiteContentLoader {
     private static final int DEFAULT_LINKS_PER_SITE = 1_000;
     private static final List<Path> CSV_PATH_CANDIDATES = List.of(
             Path.of("common/src/main/java/com/example/common/sitecontent/resources/top-1m.csv"),
@@ -29,7 +29,7 @@ public final class SiteContentCsvLoader {
             "painel de leitura"
     );
 
-    private SiteContentCsvLoader() {
+    private SiteContentLoader() {
     }
 
     public static List<SiteContent> load() {
@@ -49,7 +49,7 @@ public final class SiteContentCsvLoader {
         List<SiteContent> siteContents = new ArrayList<>();
         for (int i = 0; i < domains.size(); i += linksPerSite) {
             int end = Math.min(i + linksPerSite, domains.size());
-            List<String> links = domains.subList(i, end).stream().map(SiteContentCsvLoader::normalizeToUrl).toList();
+            List<String> links = domains.subList(i, end).stream().map(SiteContentLoader::normalizeToUrl).toList();
             System.out.println(links.size());
             siteContents.add(createSiteContentFromLinks(links));
             for (var link : links) {

@@ -3,7 +3,7 @@ package com.example.dataserver;
 import com.example.common.logging.AppLogger;
 import com.example.common.logging.Loggers;
 import com.example.common.sitecontent.SiteContent;
-import com.example.common.sitecontent.SiteContentCsvLoader;
+import com.example.common.sitecontent.SiteContentLoader;
 
 import java.util.HashMap;
 import java.util.List;
@@ -18,7 +18,7 @@ final class InternetMockJsonLoader {
     static Map<String, String> load() {
         List<SiteContent> loadedPages;
         try {
-            loadedPages = SiteContentCsvLoader.load();
+            loadedPages = SiteContentLoader.load();
         } catch (RuntimeException e) {
             LOGGER.error("Failed to generate internet mock data from CSV: " + e.getMessage() + ". Starting with empty data.");
             return Map.of();
