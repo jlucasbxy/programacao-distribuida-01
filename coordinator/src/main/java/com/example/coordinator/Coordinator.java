@@ -1,5 +1,6 @@
 package com.example.coordinator;
 
+import com.example.common.concurrent.ExecutorShutdown;
 import com.example.common.logging.AppLogger;
 import com.example.common.logging.Loggers;
 import com.example.common.sitecontent.SiteContentLoader;
@@ -71,15 +72,7 @@ public class Coordinator {
         } finally {
             pingBroadcaster.cancel(true);
             requestShutdown();
-            workerConnections.shutdown();
-            try {
-                if (!workerConnections.awaitTermination(5, TimeUnit.SECONDS)) {
-                    workerConnections.shutdownNow();
-                }
-            } catch (InterruptedException e) {
-                workerConnections.shutdownNow();
-                Thread.currentThread().interrupt();
-            }
+            ExecutorShutdown.shutdownGracefully(workerConnections, 5, TimeUnit.SECONDS);
         }
     }
 

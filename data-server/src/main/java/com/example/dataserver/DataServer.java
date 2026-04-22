@@ -1,5 +1,6 @@
 package com.example.dataserver;
 
+import com.example.common.concurrent.ExecutorShutdown;
 import com.example.common.logging.AppLogger;
 import com.example.common.logging.Loggers;
 import com.example.common.sitecontent.SiteContent;
@@ -83,15 +84,7 @@ public class DataServer {
                 }
             }
         } finally {
-            workers.shutdown();
-            try {
-                if (!workers.awaitTermination(5, TimeUnit.SECONDS)) {
-                    workers.shutdownNow();
-                }
-            } catch (InterruptedException e) {
-                workers.shutdownNow();
-                Thread.currentThread().interrupt();
-            }
+            ExecutorShutdown.shutdownGracefully(workers, 5, TimeUnit.SECONDS);
         }
     }
 

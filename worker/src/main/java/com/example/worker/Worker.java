@@ -1,5 +1,6 @@
 package com.example.worker;
 
+import com.example.common.concurrent.ExecutorShutdown;
 import com.example.common.dataserver.DataServerClient;
 import com.example.common.dataserver.DataServerResponse;
 import com.example.common.logging.AppLogger;
@@ -107,16 +108,7 @@ public class Worker {
     }
 
     private void shutdownPool(ExecutorService taskPool) {
-        if (taskPool.isShutdown()) return;
-        taskPool.shutdown();
-        try {
-            if (!taskPool.awaitTermination(5, TimeUnit.SECONDS)) {
-                taskPool.shutdownNow();
-            }
-        } catch (InterruptedException e) {
-            taskPool.shutdownNow();
-            Thread.currentThread().interrupt();
-        }
+        ExecutorShutdown.shutdownGracefully(taskPool, 5, TimeUnit.SECONDS);
     }
 
     private Future<?> startPingTask(ExecutorService taskPool, Socket socket, PrintWriter writer) {
