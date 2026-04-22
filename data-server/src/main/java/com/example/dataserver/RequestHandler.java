@@ -1,12 +1,8 @@
 package com.example.dataserver;
 
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 final class RequestHandler {
-    private static final Pattern GET_PATTERN = Pattern.compile("^GET\\s+/?([^\\s]+)");
-
     private RequestHandler() {
     }
 
@@ -27,13 +23,22 @@ final class RequestHandler {
 
     private static String resolveRequestedUrl(String requestLine) {
         String trimmed = requestLine.trim();
-        Matcher matcher = GET_PATTERN.matcher(trimmed);
-        if (matcher.find()) {
-            return matcher.group(1);
+        if (trimmed.regionMatches(true, 0, "GET", 0, 3)) {
+            if (trimmed.length() == 3) {
+                return null;
+            }
+            if (!Character.isWhitespace(trimmed.charAt(3))) {
+                return null;
+            }
+            String payload = trimmed.substring(3).trim();
+            if (payload.isBlank()) {
+                return null;
+            }
+            return payload;
         }
         if (trimmed.isBlank()) {
             return null;
         }
-        return trimmed.startsWith("/") ? trimmed.substring(1) : trimmed;
+        return trimmed;
     }
 }

@@ -1,6 +1,7 @@
 package com.example.coordinator;
 
 import com.example.common.logging.AppLogger;
+import com.example.common.net.UrlNormalizer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -109,8 +110,11 @@ public class CrawlState {
     }
 
     private static String normalizeUrl(String url) {
-        String normalized = url.trim();
-        return normalized.startsWith("/") ? normalized.substring(1) : normalized;
+        try {
+            return UrlNormalizer.trimAndValidateNotBlank(url);
+        } catch (IllegalArgumentException e) {
+            return "";
+        }
     }
 
     public void markWorkerRegistered() {
