@@ -6,11 +6,15 @@ import com.example.common.logging.Loggers;
 public class Main {
     public static void main(String[] args) {
         WorkerConfig config = WorkerConfig.fromArgs(args);
-        AppLogger logger = Loggers.withMode("worker-main", "", config.logOutput());
+        AppLogger logger = Loggers.withMode(
+                "worker-" + config.workerId(),
+                "[" + config.workerId() + "] ",
+                config.logOutput()
+        );
         logger.info("Starting worker " + config.workerId()
                 + " (capacity=" + config.capacity() + ")"
                 + " -> coordinator=" + config.coordinatorHost() + ":" + config.coordinatorPort()
                 + " data-server=" + config.dataServerHost() + ":" + config.dataServerPort());
-        new Worker(config).start();
+        new Worker(config, logger).start();
     }
 }

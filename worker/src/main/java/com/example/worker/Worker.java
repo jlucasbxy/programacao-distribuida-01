@@ -4,7 +4,6 @@ import com.example.common.concurrent.ExecutorShutdown;
 import com.example.common.dataserver.DataServerClient;
 import com.example.common.dataserver.DataServerResponse;
 import com.example.common.logging.AppLogger;
-import com.example.common.logging.Loggers;
 import com.example.common.protocol.Protocol;
 
 import java.io.BufferedReader;
@@ -16,6 +15,7 @@ import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -30,9 +30,9 @@ public class Worker {
     private final AppLogger logger;
     private final Object writerLock = new Object();
 
-    public Worker(WorkerConfig config) {
-        this.config = config;
-        this.logger = Loggers.withMode("worker-" + config.workerId(), "[" + config.workerId() + "] ", config.logOutput());
+    public Worker(WorkerConfig config, AppLogger logger) {
+        this.config = Objects.requireNonNull(config, "config must not be null");
+        this.logger = Objects.requireNonNull(logger, "logger must not be null");
     }
 
     public void start() {
