@@ -28,12 +28,11 @@ WORKER_DATA_SERVER_HOST="${WORKER_DATA_SERVER_HOST:-localhost}"
 WORKER_DATA_SERVER_PORT="${WORKER_DATA_SERVER_PORT:-9090}"
 WORKER_CAPACITY="${WORKER_CAPACITY:-1}"
 SEEDS_COUNT="${COORDINATOR_SEEDS_COUNT:-}"
-CLEAN_BUILD="${BUILD_CLEAN:-false}"
 
 usage() {
     echo "Usage: $0 [--all] [--data-server] [--coordinator] [--workers [N]] [--capacity C] [--seeds-count N] [--clean] [--no-build]"
     echo "  Uses .env file at: $ENV_FILE (if present)"
-    echo "  Env vars: WORKER_COUNT, WORKER_COORDINATOR_HOST, WORKER_COORDINATOR_PORT, WORKER_DATA_SERVER_HOST, WORKER_DATA_SERVER_PORT, WORKER_CAPACITY, COORDINATOR_SEEDS_COUNT, BUILD_CLEAN, BUILD_SKIP"
+    echo "  Env vars: WORKER_COUNT, WORKER_COORDINATOR_HOST, WORKER_COORDINATOR_PORT, WORKER_DATA_SERVER_HOST, WORKER_DATA_SERVER_PORT, WORKER_CAPACITY, COORDINATOR_SEEDS_COUNT, BUILD_SKIP"
     echo "  Worker env vars: WORKER_COORDINATOR_HOST, WORKER_COORDINATOR_PORT, WORKER_DATA_SERVER_HOST, WORKER_DATA_SERVER_PORT, WORKER_CAPACITY"
     echo "  --all             Start all services (default if no flags given)"
     echo "  --data-server     Start only the data-server"
