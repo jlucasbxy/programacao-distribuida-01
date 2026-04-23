@@ -2,7 +2,6 @@ package com.example.coordinator;
 
 import com.example.common.concurrent.ExecutorShutdown;
 import com.example.common.logging.AppLogger;
-import com.example.common.logging.Loggers;
 import com.example.common.protocol.Protocol;
 import com.example.common.sitecontent.SiteContentLoader;
 
@@ -22,6 +21,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Objects;
 
 public class Coordinator {
     private final CoordinatorConfig config;
@@ -36,9 +36,9 @@ public class Coordinator {
     private volatile ServerSocket serverSocket;
     private volatile ExecutorService workerConnections;
 
-    public Coordinator(CoordinatorConfig config) {
-        this.config = config;
-        this.logger = Loggers.consoleWithPrefix("coordinator", "[coordinator] ");
+    public Coordinator(CoordinatorConfig config, AppLogger logger) {
+        this.config = Objects.requireNonNull(config, "config must not be null");
+        this.logger = Objects.requireNonNull(logger, "logger must not be null");
         this.workers = new ConcurrentHashMap<>();
         this.crawlState = new CrawlState(workers, logger);
         this.running = new AtomicBoolean(true);

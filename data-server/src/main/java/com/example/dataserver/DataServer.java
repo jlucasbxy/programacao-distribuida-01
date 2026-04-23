@@ -2,7 +2,6 @@ package com.example.dataserver;
 
 import com.example.common.concurrent.ExecutorShutdown;
 import com.example.common.logging.AppLogger;
-import com.example.common.logging.Loggers;
 import com.example.common.sitecontent.SiteContent;
 import com.example.common.sitecontent.SiteContentLoader;
 
@@ -20,15 +19,16 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Objects;
 
 public class DataServer {
     private final DataServerConfig config;
     private final Map<String, String> siteContentByUrl;
     private final AppLogger logger;
 
-    public DataServer(DataServerConfig config) {
-        this.config = config;
-        this.logger = Loggers.consoleWithPrefix("data-server", "[data-server] ");
+    public DataServer(DataServerConfig config, AppLogger logger) {
+        this.config = Objects.requireNonNull(config, "config must not be null");
+        this.logger = Objects.requireNonNull(logger, "logger must not be null");
         this.siteContentByUrl = loadSiteContentByUrl();
     }
 

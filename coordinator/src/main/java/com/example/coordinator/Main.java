@@ -7,11 +7,10 @@ import java.io.IOException;
 import java.util.Arrays;
 
 public class Main {
-    private static final AppLogger LOGGER = Loggers.consoleWithPrefix("coordinator-main", "[coordinator] ");
-
     public static void main(String[] args) throws IOException {
+        AppLogger logger = Loggers.consoleWithPrefix("coordinator-main", "[coordinator] ");
         if (args.length == 0) {
-            LOGGER.error("Usage: Main --coordinator [port] [--seeds-count <n>]");
+            logger.error("Usage: Main --coordinator [port] [--seeds-count <n>]");
             System.exit(1);
         }
 
@@ -19,10 +18,10 @@ public class Main {
         String[] rest = Arrays.copyOfRange(args, 1, args.length);
 
         switch (mode) {
-            case "--coordinator" -> new Coordinator(CoordinatorConfig.fromArgs(rest)).start();
+            case "--coordinator" -> new Coordinator(CoordinatorConfig.fromArgs(rest, logger), logger).start();
             default -> {
-                LOGGER.error("Unknown mode: " + mode);
-                LOGGER.error("Use --coordinator.");
+                logger.error("Unknown mode: " + mode);
+                logger.error("Use --coordinator.");
                 System.exit(1);
             }
         }

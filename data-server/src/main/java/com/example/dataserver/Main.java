@@ -7,11 +7,10 @@ import java.io.IOException;
 import java.util.Arrays;
 
 public class Main {
-    private static final AppLogger LOGGER = Loggers.consoleWithPrefix("data-server-main", "[data-server] ");
-
     public static void main(String[] args) throws IOException {
+        AppLogger logger = Loggers.consoleWithPrefix("data-server-main", "[data-server] ");
         if (args.length == 0) {
-            LOGGER.error("Usage: Main --server [port]");
+            logger.error("Usage: Main --server [port]");
             System.exit(1);
         }
 
@@ -19,10 +18,10 @@ public class Main {
         String[] rest = Arrays.copyOfRange(args, 1, args.length);
 
         switch (mode) {
-            case "--server" -> new DataServer(DataServerConfig.fromArgs(rest)).start();
+            case "--server" -> new DataServer(DataServerConfig.fromArgs(rest, logger), logger).start();
             default -> {
-                LOGGER.error("Unknown mode: " + mode);
-                LOGGER.error("Use --server.");
+                logger.error("Unknown mode: " + mode);
+                logger.error("Use --server.");
                 System.exit(1);
             }
         }
