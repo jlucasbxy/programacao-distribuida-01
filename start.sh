@@ -20,18 +20,18 @@ if [[ -f "$ENV_FILE" ]]; then
     set +a
 fi
 
-START_DATA_SERVER="${DATA_SERVER_START:-${START_DATA_SERVER:-false}}"
-START_COORDINATOR="${COORDINATOR_START:-${START_COORDINATOR:-false}}"
-START_WORKERS="${WORKER_START:-${START_WORKERS:-false}}"
-NUM_WORKERS="${WORKER_COUNT:-${NUM_WORKERS:-1}}"
+START_DATA_SERVER="${DATA_SERVER_START:-false}"
+START_COORDINATOR="${COORDINATOR_START:-false}"
+START_WORKERS="${WORKER_START:-false}"
+NUM_WORKERS="${WORKER_COUNT:-1}"
 WORKER_CAPACITY="${WORKER_CAPACITY:-1}"
-SEEDS_COUNT="${COORDINATOR_SEEDS_COUNT:-${SEEDS_COUNT:-}}"
-CLEAN_BUILD="${BUILD_CLEAN:-${CLEAN_BUILD:-false}}"
+SEEDS_COUNT="${COORDINATOR_SEEDS_COUNT:-}"
+CLEAN_BUILD="${BUILD_CLEAN:-false}"
 
 usage() {
     echo "Usage: $0 [--all] [--data-server] [--coordinator] [--workers [N]] [--capacity C] [--seeds-count N] [--clean]"
     echo "  Uses .env file at: $ENV_FILE (if present)"
-    echo "  Preferred env vars: DATA_SERVER_*, COORDINATOR_*, WORKER_*, BUILD_*"
+    echo "  Env vars: DATA_SERVER_*, COORDINATOR_*, WORKER_*, BUILD_*"
     echo "  --all             Start all services (default if no flags given)"
     echo "  --data-server     Start only the data-server"
     echo "  --coordinator     Start only the coordinator"
