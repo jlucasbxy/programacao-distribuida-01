@@ -12,6 +12,7 @@ NUM_WORKERS=1
 WORKER_CAPACITY=1
 SEEDS_COUNT=""
 CLEAN_BUILD=false
+SKIP_BUILD="${BUILD_SKIP:-false}"
 
 if [[ -f "$ENV_FILE" ]]; then
     set -a
@@ -30,9 +31,9 @@ SEEDS_COUNT="${COORDINATOR_SEEDS_COUNT:-}"
 CLEAN_BUILD="${BUILD_CLEAN:-false}"
 
 usage() {
-    echo "Usage: $0 [--all] [--data-server] [--coordinator] [--workers [N]] [--capacity C] [--seeds-count N] [--clean]"
+    echo "Usage: $0 [--all] [--data-server] [--coordinator] [--workers [N]] [--capacity C] [--seeds-count N] [--clean] [--no-build]"
     echo "  Uses .env file at: $ENV_FILE (if present)"
-    echo "  Env vars: WORKER_COUNT, WORKER_COORDINATOR_HOST, WORKER_COORDINATOR_PORT, WORKER_DATA_SERVER_HOST, WORKER_DATA_SERVER_PORT, WORKER_CAPACITY, COORDINATOR_SEEDS_COUNT, BUILD_CLEAN"
+    echo "  Env vars: WORKER_COUNT, WORKER_COORDINATOR_HOST, WORKER_COORDINATOR_PORT, WORKER_DATA_SERVER_HOST, WORKER_DATA_SERVER_PORT, WORKER_CAPACITY, COORDINATOR_SEEDS_COUNT, BUILD_CLEAN, BUILD_SKIP"
     echo "  Worker env vars: WORKER_COORDINATOR_HOST, WORKER_COORDINATOR_PORT, WORKER_DATA_SERVER_HOST, WORKER_DATA_SERVER_PORT, WORKER_CAPACITY"
     echo "  --all             Start all services (default if no flags given)"
     echo "  --data-server     Start only the data-server"
@@ -41,6 +42,7 @@ usage() {
     echo "  --capacity C      Set capacity per worker (default: 1)"
     echo "  --seeds-count N   Limit coordinator to read only N seeds from the file"
     echo "  --clean           Clean all Maven modules"
+    echo "  --no-build        Skip Maven build steps (use existing compiled artifacts)"
     exit 1
 }
 
@@ -97,6 +99,10 @@ else
                 CLEAN_BUILD=true
                 shift
                 ;;
+            --no-build)
+                SKIP_BUILD=true
+                shift
+                ;;
             *)
                 echo "Unknown flag: $1"
                 usage
@@ -130,6 +136,11 @@ if [[ -n "$SEEDS_COUNT" && ! "$SEEDS_COUNT" =~ ^[0-9]+$ ]]; then
     exit 1
 fi
 
+if $SKIP_BUILD && $CLEAN_BUILD && ($START_DATA_SERVER || $START_COORDINATOR || $START_WORKERS); then
+    echo "Error: --clean and --no-build cannot be used together when starting services"
+    exit 1
+fi
+
 if $CLEAN_BUILD && ! $START_DATA_SERVER && ! $START_COORDINATOR && ! $START_WORKERS; then
     echo "Cleaning all modules..."
     mvn -f "$ROOT/pom.xml" clean -q
@@ -160,13 +171,17 @@ build_runtime_classpath() {
     printf '%s' "$classpath"
 }
 
-echo "Building all modules..."
-if $CLEAN_BUILD; then
-    mvn -f "$ROOT/pom.xml" clean -q
+if $SKIP_BUILD; then
+    echo "Skipping build steps (--no-build)."
+else
+    echo "Building all modules..."
+    if $CLEAN_BUILD; then
+        mvn -f "$ROOT/pom.xml" clean -q
+    fi
+    mvn -f "$ROOT/pom.xml" install -DskipTests -q
+    echo "Preparing runtime dependencies..."
+    mvn -f "$ROOT/pom.xml" dependency:copy-dependencies -DincludeScope=runtime -q
 fi
-mvn -f "$ROOT/pom.xml" install -DskipTests -q
-echo "Preparing runtime dependencies..."
-mvn -f "$ROOT/pom.xml" dependency:copy-dependencies -DincludeScope=runtime -q
 
 if $START_DATA_SERVER; then
     echo "Starting data-server..."
