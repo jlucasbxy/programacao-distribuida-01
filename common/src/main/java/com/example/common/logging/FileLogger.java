@@ -6,12 +6,16 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 public final class FileLogger implements AppLogger {
     private static final String DEFAULT_INFO_FILE_NAME = "application.log";
     private static final String DEFAULT_ERROR_FILE_NAME = "application-error.log";
     private static final String LOGS_DIRECTORY_NAME = "logs";
     private static final Path LOGS_DIRECTORY = Paths.get(LOGS_DIRECTORY_NAME).toAbsolutePath().normalize();
+    private static final DateTimeFormatter FILE_TIMESTAMP_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
+    private static final String RUN_START_TIMESTAMP = FILE_TIMESTAMP_FORMATTER.format(LocalDateTime.now());
     private static final Object OUTPUT_LOCK = new Object();
 
     private final Path infoFilePath;
@@ -42,7 +46,8 @@ public final class FileLogger implements AppLogger {
 
     private static Path resolvePath(String fileName, String fallbackFileName) {
         String normalizedFileName = fileName == null || fileName.isBlank() ? fallbackFileName : fileName;
-        Path requestedPath = Paths.get(normalizedFileName).normalize();
+        String fileNameWithTimestampSuffix = appendTimestampSuffix(normalizedFileName);
+        Path requestedPath = Paths.get(fileNameWithTimestampSuffix).normalize();
         Path resolvedPath;
 
         if (requestedPath.isAbsolute()) {
@@ -58,6 +63,17 @@ public final class FileLogger implements AppLogger {
         }
 
         return resolvedPath;
+    }
+
+    private static String appendTimestampSuffix(String fileName) {
+        int extensionStart = fileName.lastIndexOf('.');
+        if (extensionStart <= 0 || extensionStart == fileName.length() - 1) {
+            return fileName + "-" + RUN_START_TIMESTAMP;
+        }
+
+        String fileNameWithoutExtension = fileName.substring(0, extensionStart);
+        String extension = fileName.substring(extensionStart);
+        return fileNameWithoutExtension + "-" + RUN_START_TIMESTAMP + extension;
     }
 
     private static String resolveSafeFileName(Path requestedPath, String fallbackFileName) {
