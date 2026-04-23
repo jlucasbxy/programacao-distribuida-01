@@ -3,6 +3,8 @@ set -e
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 
+ENV_FILE="${ENV_FILE:-$ROOT/.env}"
+
 START_DATA_SERVER=false
 START_COORDINATOR=false
 START_WORKERS=false
@@ -11,8 +13,25 @@ WORKER_CAPACITY=1
 SEEDS_COUNT=""
 CLEAN_BUILD=false
 
+if [[ -f "$ENV_FILE" ]]; then
+    set -a
+    # shellcheck disable=SC1090
+    source "$ENV_FILE"
+    set +a
+fi
+
+START_DATA_SERVER="${DATA_SERVER_START:-${START_DATA_SERVER:-false}}"
+START_COORDINATOR="${COORDINATOR_START:-${START_COORDINATOR:-false}}"
+START_WORKERS="${WORKER_START:-${START_WORKERS:-false}}"
+NUM_WORKERS="${WORKER_COUNT:-${NUM_WORKERS:-1}}"
+WORKER_CAPACITY="${WORKER_CAPACITY:-1}"
+SEEDS_COUNT="${COORDINATOR_SEEDS_COUNT:-${SEEDS_COUNT:-}}"
+CLEAN_BUILD="${BUILD_CLEAN:-${CLEAN_BUILD:-false}}"
+
 usage() {
     echo "Usage: $0 [--all] [--data-server] [--coordinator] [--workers [N]] [--capacity C] [--seeds-count N] [--clean]"
+    echo "  Uses .env file at: $ENV_FILE (if present)"
+    echo "  Preferred env vars: DATA_SERVER_*, COORDINATOR_*, WORKER_*, BUILD_*"
     echo "  --all             Start all services (default if no flags given)"
     echo "  --data-server     Start only the data-server"
     echo "  --coordinator     Start only the coordinator"
@@ -82,6 +101,21 @@ else
                 ;;
         esac
     done
+fi
+
+if ! [[ "$NUM_WORKERS" =~ ^[0-9]+$ ]]; then
+    echo "Error: NUM_WORKERS must be numeric (current: $NUM_WORKERS)"
+    exit 1
+fi
+
+if ! [[ "$WORKER_CAPACITY" =~ ^[0-9]+$ ]]; then
+    echo "Error: WORKER_CAPACITY must be numeric (current: $WORKER_CAPACITY)"
+    exit 1
+fi
+
+if [[ -n "$SEEDS_COUNT" && ! "$SEEDS_COUNT" =~ ^[0-9]+$ ]]; then
+    echo "Error: SEEDS_COUNT must be numeric when provided (current: $SEEDS_COUNT)"
+    exit 1
 fi
 
 if $CLEAN_BUILD && ! $START_DATA_SERVER && ! $START_COORDINATOR && ! $START_WORKERS; then
