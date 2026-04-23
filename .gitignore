@@ -23,3 +23,7 @@ internet-mock-full.json
 # Logs
 
 logs/
+
+# Enviroment Variables
+
+.env
