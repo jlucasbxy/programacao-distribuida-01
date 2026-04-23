@@ -27,13 +27,14 @@ WORKER_COORDINATOR_PORT="${WORKER_COORDINATOR_PORT:-7070}"
 WORKER_DATA_SERVER_HOST="${WORKER_DATA_SERVER_HOST:-localhost}"
 WORKER_DATA_SERVER_PORT="${WORKER_DATA_SERVER_PORT:-9090}"
 WORKER_CAPACITY="${WORKER_CAPACITY:-1}"
+WORKER_LOG_MODE="${WORKER_LOG_MODE:-stdout}"
 SEEDS_COUNT="${COORDINATOR_SEEDS_COUNT:-}"
 
 usage() {
     echo "Usage: $0 [--all] [--data-server] [--coordinator] [--workers [N]] [--capacity C] [--seeds-count N] [--clean] [--no-build]"
     echo "  Uses .env file at: $ENV_FILE (if present)"
-    echo "  Env vars: WORKER_COUNT, WORKER_COORDINATOR_HOST, WORKER_COORDINATOR_PORT, WORKER_DATA_SERVER_HOST, WORKER_DATA_SERVER_PORT, WORKER_CAPACITY, COORDINATOR_SEEDS_COUNT, BUILD_SKIP"
-    echo "  Worker env vars: WORKER_COORDINATOR_HOST, WORKER_COORDINATOR_PORT, WORKER_DATA_SERVER_HOST, WORKER_DATA_SERVER_PORT, WORKER_CAPACITY"
+    echo "  Env vars: WORKER_COUNT, WORKER_COORDINATOR_HOST, WORKER_COORDINATOR_PORT, WORKER_DATA_SERVER_HOST, WORKER_DATA_SERVER_PORT, WORKER_CAPACITY, WORKER_LOG_MODE, COORDINATOR_SEEDS_COUNT, BUILD_SKIP"
+    echo "  Worker env vars: WORKER_COORDINATOR_HOST, WORKER_COORDINATOR_PORT, WORKER_DATA_SERVER_HOST, WORKER_DATA_SERVER_PORT, WORKER_CAPACITY, WORKER_LOG_MODE"
     echo "  --all             Start all services (default if no flags given)"
     echo "  --data-server     Start only the data-server"
     echo "  --coordinator     Start only the coordinator"
@@ -135,6 +136,15 @@ if [[ -n "$SEEDS_COUNT" && ! "$SEEDS_COUNT" =~ ^[0-9]+$ ]]; then
     exit 1
 fi
 
+case "$WORKER_LOG_MODE" in
+    stdout|console|logger|disabled|disable|off|none)
+        ;;
+    *)
+        echo "Error: WORKER_LOG_MODE must be one of: stdout, logger, disabled (aliases: console, disable, off, none)"
+        exit 1
+        ;;
+esac
+
 if $SKIP_BUILD && $CLEAN_BUILD && ($START_DATA_SERVER || $START_COORDINATOR || $START_WORKERS); then
     echo "Error: --clean and --no-build cannot be used together when starting services"
     exit 1
@@ -210,6 +220,7 @@ if $START_WORKERS; then
             --data-server-port "$WORKER_DATA_SERVER_PORT"
             --capacity "$WORKER_CAPACITY"
             --worker-id "worker-$i"
+            --log-mode "$WORKER_LOG_MODE"
         )
 
         java -cp "$(build_runtime_classpath worker)" com.example.worker.Main "${WORKER_ARGS[@]}" &
