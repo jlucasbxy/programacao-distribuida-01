@@ -1,5 +1,8 @@
 package com.example.worker;
 
+import com.example.common.logging.Loggers;
+
+import java.util.Locale;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -11,7 +14,8 @@ public record WorkerConfig(
         String dataServerHost,
         int dataServerPort,
         int capacity,
-        String workerId
+        String workerId,
+        Loggers.Output logOutput
 ) {
     private static final String DEFAULT_COORDINATOR_HOST = "localhost";
     private static final int DEFAULT_COORDINATOR_PORT = 7070;
@@ -36,6 +40,7 @@ public record WorkerConfig(
         int dataServerPort = DEFAULT_DATA_SERVER_PORT;
         int capacity = DEFAULT_CAPACITY;
         String workerId = UUID.randomUUID().toString().substring(0, 8);
+        Loggers.Output logOutput = Loggers.Output.STDOUT;
 
         for (int i = 0; i < args.length - 1; i++) {
             switch (args[i]) {
@@ -45,10 +50,24 @@ public record WorkerConfig(
                 case "--data-server-port" -> dataServerPort = Integer.parseInt(args[++i]);
                 case "--capacity"         -> capacity = Integer.parseInt(args[++i]);
                 case "--worker-id"        -> workerId = args[++i];
+                case "--log-mode" -> logOutput = parseLogOutput(args[++i]);
             }
         }
 
-        return new WorkerConfig(coordinatorHost, coordinatorPort, dataServerHost, dataServerPort, capacity, workerId);
+        return new WorkerConfig(coordinatorHost, coordinatorPort, dataServerHost, dataServerPort, capacity, workerId, logOutput);
+    }
+
+    private static Loggers.Output parseLogOutput(String value) {
+        if (value == null || value.isBlank()) {
+            return Loggers.Output.STDOUT;
+        }
+
+        return switch (value.trim().toLowerCase(Locale.ROOT)) {
+            case "logger" -> Loggers.Output.LOGGER;
+            case "disabled", "disable", "off", "none" -> Loggers.Output.DISABLED;
+            case "stdout", "console" -> Loggers.Output.STDOUT;
+            default -> Loggers.Output.STDOUT;
+        };
     }
 
     public Map<String, Predicate<String>> categories() {

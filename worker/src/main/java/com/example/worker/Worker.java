@@ -32,7 +32,7 @@ public class Worker {
 
     public Worker(WorkerConfig config) {
         this.config = config;
-        this.logger = Loggers.consoleWithPrefix("worker-" + config.workerId(), "[" + config.workerId() + "] ");
+        this.logger = Loggers.withMode("worker-" + config.workerId(), "[" + config.workerId() + "] ", config.logOutput());
     }
 
     public void start() {
