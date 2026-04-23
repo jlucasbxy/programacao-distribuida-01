@@ -24,6 +24,10 @@ START_DATA_SERVER="${DATA_SERVER_START:-false}"
 START_COORDINATOR="${COORDINATOR_START:-false}"
 START_WORKERS="${WORKER_START:-false}"
 NUM_WORKERS="${WORKER_COUNT:-1}"
+WORKER_COORDINATOR_HOST="${WORKER_COORDINATOR_HOST:-localhost}"
+WORKER_COORDINATOR_PORT="${WORKER_COORDINATOR_PORT:-7070}"
+WORKER_DATA_SERVER_HOST="${WORKER_DATA_SERVER_HOST:-localhost}"
+WORKER_DATA_SERVER_PORT="${WORKER_DATA_SERVER_PORT:-9090}"
 WORKER_CAPACITY="${WORKER_CAPACITY:-1}"
 SEEDS_COUNT="${COORDINATOR_SEEDS_COUNT:-}"
 CLEAN_BUILD="${BUILD_CLEAN:-false}"
@@ -32,6 +36,7 @@ usage() {
     echo "Usage: $0 [--all] [--data-server] [--coordinator] [--workers [N]] [--capacity C] [--seeds-count N] [--clean]"
     echo "  Uses .env file at: $ENV_FILE (if present)"
     echo "  Env vars: DATA_SERVER_*, COORDINATOR_*, WORKER_*, BUILD_*"
+    echo "  Worker env vars: WORKER_COORDINATOR_HOST, WORKER_COORDINATOR_PORT, WORKER_DATA_SERVER_HOST, WORKER_DATA_SERVER_PORT, WORKER_CAPACITY"
     echo "  --all             Start all services (default if no flags given)"
     echo "  --data-server     Start only the data-server"
     echo "  --coordinator     Start only the coordinator"
@@ -113,6 +118,16 @@ if ! [[ "$WORKER_CAPACITY" =~ ^[0-9]+$ ]]; then
     exit 1
 fi
 
+if ! [[ "$WORKER_COORDINATOR_PORT" =~ ^[0-9]+$ ]]; then
+    echo "Error: WORKER_COORDINATOR_PORT must be numeric (current: $WORKER_COORDINATOR_PORT)"
+    exit 1
+fi
+
+if ! [[ "$WORKER_DATA_SERVER_PORT" =~ ^[0-9]+$ ]]; then
+    echo "Error: WORKER_DATA_SERVER_PORT must be numeric (current: $WORKER_DATA_SERVER_PORT)"
+    exit 1
+fi
+
 if [[ -n "$SEEDS_COUNT" && ! "$SEEDS_COUNT" =~ ^[0-9]+$ ]]; then
     echo "Error: SEEDS_COUNT must be numeric when provided (current: $SEEDS_COUNT)"
     exit 1
@@ -177,7 +192,16 @@ fi
 if $START_WORKERS; then
     echo "Starting $NUM_WORKERS worker(s)..."
     for i in $(seq 1 "$NUM_WORKERS"); do
-        java -cp "$(build_runtime_classpath worker)" com.example.worker.Main --worker-id "worker-$i" --capacity "$WORKER_CAPACITY" &
+        WORKER_ARGS=(
+            --coordinator-host "$WORKER_COORDINATOR_HOST"
+            --coordinator-port "$WORKER_COORDINATOR_PORT"
+            --data-server-host "$WORKER_DATA_SERVER_HOST"
+            --data-server-port "$WORKER_DATA_SERVER_PORT"
+            --capacity "$WORKER_CAPACITY"
+            --worker-id "worker-$i"
+        )
+
+        java -cp "$(build_runtime_classpath worker)" com.example.worker.Main "${WORKER_ARGS[@]}" &
         PIDS+=($!)
     done
 fi
