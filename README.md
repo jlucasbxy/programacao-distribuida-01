@@ -164,3 +164,12 @@ O dataset base fica em:
 
 O `SiteContentLoader` gera conteudo HTML sintetico para cada URL com links internos.
 O coordinator usa seeds derivadas desse arquivo e, por default, tenta iniciar com ate `1000` seeds.
+
+## Comparativo de Tempo de Execucao
+
+| Cenario                                   | Tempo de execucao (s) |
+|-------------------------------------------|----------------------:|
+| Mesma maquina - Log desabilitado          |                39.350 |
+| Mesma maquina - Log no console            |                49.530 |
+| Mesma maquina - Log em arquivo e console  |                57.090 |
+| Distribuido via Wi-Fi com log no console  |               254.280 |
